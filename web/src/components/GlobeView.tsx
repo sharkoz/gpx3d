@@ -136,7 +136,7 @@ function directImageryProvider(C: CesiumModule, url: string, credit: string, fal
   return {
     tileWidth: 256,
     tileHeight: 256,
-    maximumLevel: 19,
+    maximumLevel: 16,
     minimumLevel: 0,
     tilingScheme,
     rectangle: tilingScheme.rectangle,
@@ -179,9 +179,9 @@ function addTrack(
   metric: TrackMetric,
   altitudeOffset: number,
 ) {
-  const collection = viewer.scene.primitives.add(new C.PolylineCollection());
   const [minimum, maximum] = metricRange(flight.points, metric);
-  const step = Math.max(1, Math.ceil(flight.points.length / 2_500));
+  const step = Math.max(1, Math.ceil(flight.points.length / 1_200));
+  const instances: import("cesium").GeometryInstance[] = [];
 
   for (let index = step; index < flight.points.length; index += step) {
     const from = flight.points[index - step];
@@ -189,18 +189,33 @@ function addTrack(
     if (from.segmentIndex !== to.segmentIndex) continue;
     const fromHeight = renderHeight(from, altitudeOffset) + 2;
     const toHeight = renderHeight(to, altitudeOffset) + 2;
-    collection.add({
-      positions: [
-        C.Cartesian3.fromDegrees(from.longitude, from.latitude, fromHeight),
-        C.Cartesian3.fromDegrees(to.longitude, to.latitude, toHeight),
-      ],
-      width: 3.5,
-      material: C.Material.fromType("Color", {
-        color: trackColor(C, metricValue(to, metric), minimum, maximum),
+    instances.push(
+      new C.GeometryInstance({
+        geometry: new C.PolylineGeometry({
+          positions: [
+            C.Cartesian3.fromDegrees(from.longitude, from.latitude, fromHeight),
+            C.Cartesian3.fromDegrees(to.longitude, to.latitude, toHeight),
+          ],
+          width: 3.5,
+          vertexFormat: C.PolylineColorAppearance.VERTEX_FORMAT,
+        }),
+        attributes: {
+          color: C.ColorGeometryInstanceAttribute.fromColor(
+            trackColor(C, metricValue(to, metric), minimum, maximum),
+          ),
+        },
       }),
-    });
+    );
   }
-  return collection;
+  if (instances.length === 0) return null;
+  return viewer.scene.primitives.add(
+    new C.Primitive({
+      geometryInstances: instances,
+      appearance: new C.PolylineColorAppearance({ translucent: true }),
+      allowPicking: false,
+      asynchronous: true,
+    }),
+  );
 }
 
 async function configureMap(
@@ -422,7 +437,7 @@ export function GlobeView({
   const viewerRef = useRef<import("cesium").Viewer | null>(null);
   const markerRef = useRef<import("cesium").Entity | null>(null);
   const modelRef = useRef<import("cesium").Model | null>(null);
-  const trackRef = useRef<import("cesium").PolylineCollection | null>(null);
+  const trackRef = useRef<import("cesium").Primitive | null>(null);
   const buildingsRef = useRef<import("cesium").Primitive | null>(null);
   const screenHandlerRef = useRef<import("cesium").ScreenSpaceEventHandler | null>(null);
   const trackMetricRef = useRef(trackMetric);
@@ -470,11 +485,14 @@ export function GlobeView({
         selectionIndicator: false,
         timeline: false,
         terrainProvider: new C.EllipsoidTerrainProvider(),
+        requestRenderMode: true,
+        maximumRenderTimeChange: Number.POSITIVE_INFINITY,
       });
       viewerRef.current = viewer;
+      const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
       viewer.scene.globe.baseColor = C.Color.fromCssColorString("#0b171c");
       viewer.scene.globe.depthTestAgainstTerrain = true;
-      viewer.scene.globe.maximumScreenSpaceError = 3;
+      viewer.scene.globe.maximumScreenSpaceError = coarsePointer ? 14 : 10;
       viewer.scene.highDynamicRange = true;
       viewer.scene.fog.enabled = true;
       viewer.scene.fog.density = 0.0002;
@@ -484,8 +502,8 @@ export function GlobeView({
         viewer.scene.skyAtmosphere.brightnessShift = -0.4;
       }
       viewer.shadows = false;
-      viewer.resolutionScale = Math.min(window.devicePixelRatio, 1.5);
-      viewer.targetFrameRate = window.matchMedia("(pointer: coarse)").matches ? 30 : 60;
+      viewer.resolutionScale = Math.min(window.devicePixelRatio, 1);
+      viewer.targetFrameRate = 30;
       headingRef.current =
         flight.points[0].sourceCourse ?? flight.points[0].calculatedCourse ?? headingRef.current;
       pilotLookOffset.current = { heading: 0, pitch: 0 };
@@ -520,6 +538,7 @@ export function GlobeView({
             altitudeOffsetRef.current,
             pilotLookOffset.current,
           );
+          activeViewer.scene.requestRender();
         }
       }, C.ScreenSpaceEventType.MOUSE_MOVE);
       screenHandler.setInputAction(() => {
@@ -603,6 +622,7 @@ export function GlobeView({
     if (!C || !viewer) return;
     if (trackRef.current) viewer.scene.primitives.remove(trackRef.current);
     trackRef.current = addTrack(C, viewer, flight, trackMetric, altitudeOffset);
+    viewer.scene.requestRender();
   }, [altitudeOffset, flight, trackMetric]);
 
   useEffect(() => {
@@ -661,6 +681,7 @@ export function GlobeView({
           latestAttitude.roll,
         );
         modelRef.current = viewer.scene.primitives.add(model);
+        viewer.scene.requestRender();
         if (marker.billboard) {
           marker.billboard.distanceDisplayCondition = new C.ConstantProperty(
             new C.DistanceDisplayCondition(10_000, Number.POSITIVE_INFINITY),
@@ -723,6 +744,7 @@ export function GlobeView({
         if (primitive) {
           loadedPrimitive = viewer.scene.primitives.add(primitive);
           buildingsRef.current = loadedPrimitive;
+          viewer.scene.requestRender();
           removeReadyListener = viewer.scene.postRender.addEventListener(() => {
             if (!primitive.ready) return;
             removeReadyListener?.();
@@ -754,6 +776,7 @@ export function GlobeView({
     const point = currentPointRef.current;
     if (C && viewer && point && cameraModeRef.current === "pilot") {
       applyPilotCamera(C, viewer, point, altitudeOffsetRef.current, pilotLookOffset.current);
+      viewer.scene.requestRender();
     }
   }, [pilotLookResetKey]);
 
@@ -806,6 +829,7 @@ export function GlobeView({
     } else if (cameraMode === "free") {
       viewer.camera.lookAtTransform(C.Matrix4.IDENTITY);
     }
+    viewer.scene.requestRender();
 
     const now = performance.now();
     if (now - latestGroundSample.current > 600) {
@@ -830,6 +854,7 @@ export function GlobeView({
       altitudeOffset,
       window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 0.8,
     );
+    viewer.scene.requestRender();
   }, [altitudeOffset, cameraMode, flight]);
 
   const handlePilotKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -850,6 +875,7 @@ export function GlobeView({
     const point = currentPointRef.current;
     if (C && viewer && point) {
       applyPilotCamera(C, viewer, point, altitudeOffsetRef.current, pilotLookOffset.current);
+      viewer.scene.requestRender();
     }
   };
 
