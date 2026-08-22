@@ -8,10 +8,10 @@ describe("parseGpx", () => {
   it("préserve les données source BasicAirData et leur référence verticale", () => {
     const flight = parseGpx(demo, "demo.gpx");
 
-    expect(flight.points).toHaveLength(91);
+    expect(flight.points).toHaveLength(2_942);
     expect(flight.summary.segmentCount).toBe(1);
-    expect(flight.summary.duration).toBe(90);
-    expect(flight.points[30].sourceSpeed).toBe(0.68);
+    expect(flight.summary.duration).toBe(2_941);
+    expect(flight.points[30].sourceSpeed).toBe(0.25);
     expect(flight.verticalReference).toMatchObject({
       basis: "orthometric",
       geoidModel: "EGM96",
@@ -65,7 +65,8 @@ describe("parseGpx", () => {
   });
 
   it("conserve la valeur zéro comme vitesse enregistrée", () => {
-    const flight = parseGpx(demo);
+    const xml = `<?xml version="1.0"?><gpx version="1.0" xmlns="http://www.topografix.com/GPX/1/0"><trk><trkseg><trkpt lat="45" lon="1"><time>2026-01-01T00:00:00Z</time><speed>0</speed></trkpt><trkpt lat="45.001" lon="1"><time>2026-01-01T00:00:01Z</time><speed>1</speed></trkpt></trkseg></trk></gpx>`;
+    const flight = parseGpx(xml);
     expect(flight.points[0].sourceSpeed).toBe(0);
     expect(flight.points[0].calculatedSpeed).toBeNull();
   });

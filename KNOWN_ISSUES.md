@@ -2,9 +2,9 @@
 
 ## Validation attendue
 
-- La seule trace disponible pendant le développement mesure 17 m et correspond à un enregistrement
-  au sol. Une vraie trace ULM reste nécessaire pour valider les performances, les caméras attachées,
-  le vario et le rendu du relief sur plusieurs heures de vol.
+- La démonstration couvre un vol pendulaire de 35,1 km et 49 minutes. Des traces issues d'autres
+  appareils et des vols de plusieurs heures restent utiles pour élargir la validation des performances,
+  des caméras attachées et du vario.
 - Les extensions propres au futur enregistreur devront être comparées aux canaux GPX 1.0 et Garmin
   v2 déjà pris en charge.
 
