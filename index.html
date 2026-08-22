@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#061016" />
+    <meta
+      name="description"
+      content="Explorez et rejouez vos traces de vol GPX en trois dimensions."
+    />
+    <title>GPX3D — Carnet de vol</title>
+    <script>
+      window.CESIUM_BASE_URL = new URL("./cesium/", window.location.href).href;
+    </script>
+    <script type="module" crossorigin src="/gpx3d/assets/app.js"></script>
+    <link rel="stylesheet" crossorigin href="/gpx3d/assets/index.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
