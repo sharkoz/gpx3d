@@ -58,7 +58,7 @@ function trackColor(C: CesiumModule, value: number | null, minimum: number, maxi
   return C.Color.fromHsl(0.51 - ratio * 0.43, 0.82, 0.56, 0.96);
 }
 
-function directImageryProvider(C: CesiumModule, url: string, credit: string) {
+function directImageryProvider(C: CesiumModule, url: string, credit: string, fallbackUrl?: string) {
   const tilingScheme = new C.WebMercatorTilingScheme();
   return {
     tileWidth: 256,
@@ -77,9 +77,20 @@ function directImageryProvider(C: CesiumModule, url: string, credit: string) {
     requestImage: (x: number, y: number, level: number) =>
       new Promise<HTMLImageElement>((resolve, reject) => {
         const image = new Image();
+        let fallbackAttempted = false;
         image.crossOrigin = "anonymous";
         image.onload = () => resolve(image);
-        image.onerror = () => reject(new Error(`Tuile indisponible : ${level}/${x}/${y}`));
+        image.onerror = () => {
+          if (fallbackUrl && !fallbackAttempted) {
+            fallbackAttempted = true;
+            image.src = fallbackUrl
+              .replace("{z}", String(level))
+              .replace("{x}", String(x))
+              .replace("{y}", String(y));
+            return;
+          }
+          reject(new Error(`Tuile indisponible : ${level}/${x}/${y}`));
+        };
         image.src = url
           .replace("{z}", String(level))
           .replace("{x}", String(x))
@@ -128,11 +139,20 @@ async function configureMap(
   let imageryReady = false;
 
   try {
-    viewer.terrainProvider = mapTilerKey
+    const terrainProvider = mapTilerKey
       ? await C.CesiumTerrainProvider.fromUrl(
           `https://api.maptiler.com/tiles/terrain-quantized-mesh-v2/?key=${mapTilerKey}`,
         )
       : await C.ArcGISTiledElevationTerrainProvider.fromUrl(ARCGIS_TERRAIN);
+    let terrainErrors = 0;
+    terrainProvider.errorEvent.addEventListener(() => {
+      terrainErrors += 1;
+      if (terrainErrors >= 3 && !(viewer.terrainProvider instanceof C.EllipsoidTerrainProvider)) {
+        viewer.terrainProvider = new C.EllipsoidTerrainProvider();
+        onMapStatus("fallback");
+      }
+    });
+    viewer.terrainProvider = terrainProvider;
     terrainReady = true;
   } catch {
     viewer.terrainProvider = new C.EllipsoidTerrainProvider();
@@ -143,19 +163,19 @@ async function configureMap(
       ? directImageryProvider(
           C,
           `https://api.maptiler.com/maps/satellite-v2/{z}/{x}/{y}.jpg?key=${mapTilerKey}`,
-          "MapTiler",
+          "MapTiler | © OpenStreetMap contributors",
+          "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
         )
       : directImageryProvider(
           C,
           `${ARCGIS_IMAGERY}/tile/{z}/{y}/{x}`,
-          "Tiles © Esri — Sources: Esri, Maxar, Earthstar Geographics",
+          "Tiles © Esri — Sources: Esri, Maxar, Earthstar Geographics | © OpenStreetMap contributors",
+          "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
         );
-    viewer.imageryLayers.removeAll();
     viewer.imageryLayers.addImageryProvider(imagery);
     imageryReady = true;
   } catch {
     try {
-      viewer.imageryLayers.removeAll();
       viewer.imageryLayers.addImageryProvider(
         directImageryProvider(
           C,

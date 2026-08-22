@@ -78,3 +78,19 @@ test("les écrans principaux respectent les règles WCAG automatisables", async 
     .analyze();
   expect(viewer.violations, JSON.stringify(viewer.violations, null, 2)).toEqual([]);
 });
+
+test("le globe se replie sans les services ArcGIS", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "Scénario réseau exécuté une seule fois");
+  let osmRequests = 0;
+  await page.route("**/World_Imagery/**", (route) => route.abort());
+  await page.route("**/WorldElevation3D/**", (route) => route.abort());
+  page.on("request", (request) => {
+    if (request.url().includes("tile.openstreetmap.org")) osmRequests += 1;
+  });
+
+  await page.goto("./");
+  await page.getByRole("button", { name: /Explorer la trace de démonstration/i }).click();
+  await expect(page.locator(".flight-viewer")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("Mode de secours")).toBeVisible({ timeout: 15_000 });
+  await expect.poll(() => osmRequests, { timeout: 15_000 }).toBeGreaterThan(0);
+});
