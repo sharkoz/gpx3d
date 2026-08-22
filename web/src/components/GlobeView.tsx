@@ -653,7 +653,7 @@ export function GlobeView({
       modelMatrix: aircraftTransform(C, destination, course, attitude.pitch, attitude.roll),
       upAxis: C.Axis.Z,
       forwardAxis: C.Axis.X,
-      minimumPixelSize: 44,
+      minimumPixelSize: aircraftModelId === "ultralight" ? 72 : 44,
       maximumScale: 1_500,
       distanceDisplayCondition: new C.DistanceDisplayCondition(0, 10_000),
       shadows: C.ShadowMode.DISABLED,
@@ -816,15 +816,33 @@ export function GlobeView({
       applyPilotCamera(C, viewer, currentPoint, altitudeOffset, pilotLookOffset.current);
     } else if (cameraMode === "chase") {
       viewer.camera.cancelFlight();
+      const range =
+        aircraftModelId === "a380"
+          ? 220
+          : aircraftModelId === "mirage"
+            ? 150
+            : aircraftModelId === "ultralight"
+              ? 90
+              : aircraftModelId === "paramotor"
+                ? 65
+                : 110;
       viewer.camera.lookAt(
         destination,
-        new C.HeadingPitchRange(C.Math.toRadians(course), -0.25, 135),
+        new C.HeadingPitchRange(
+          C.Math.toRadians(course),
+          aircraftModelId === "ultralight" ? -0.42 : -0.25,
+          range,
+        ),
       );
     } else if (cameraMode === "bird") {
       viewer.camera.cancelFlight();
       viewer.camera.lookAt(
         destination,
-        new C.HeadingPitchRange(C.Math.toRadians(course), -1.18, 650),
+        new C.HeadingPitchRange(
+          C.Math.toRadians(course),
+          -1.18,
+          aircraftModelId === "ultralight" ? 450 : 650,
+        ),
       );
     } else if (cameraMode === "free") {
       viewer.camera.lookAtTransform(C.Matrix4.IDENTITY);
@@ -839,7 +857,7 @@ export function GlobeView({
         if (sampleId === groundSampleId.current) onGroundElevation(ground);
       });
     }
-  }, [altitudeOffset, cameraMode, currentPoint, onGroundElevation, sceneReady]);
+  }, [aircraftModelId, altitudeOffset, cameraMode, currentPoint, onGroundElevation, sceneReady]);
 
   useEffect(() => {
     if (cameraMode !== "overview") return;

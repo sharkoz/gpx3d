@@ -7,10 +7,13 @@ type Part = {
   position: Vector3;
   size: Vector3;
   rotation?: Quaternion;
+  mesh?: "box" | "wing";
 };
 
 const CUBE_BUFFER =
   "AAAAvwAAAL8AAAC/AAAAPwAAAL8AAAC/AAAAPwAAAD8AAAC/AAAAvwAAAD8AAAC/AAAAvwAAAL8AAAA/AAAAPwAAAL8AAAA/AAAAPwAAAD8AAAA/AAAAvwAAAD8AAAA/AAACAAEAAAADAAIABAAFAAYABAAGAAcAAAABAAUAAAAFAAQAAQACAAYAAQAGAAUAAgADAAcAAgAHAAYAAwAAAAQAAwAEAAcA";
+const WING_BUFFER =
+  "MzMzQAAAAADNzMw9zcwswJqZmUAAAAAAMzPzv5qZGUAAAAA/AADAvwAAAADNzEw/MzPzv5qZGcAAAAA/zcwswJqZmcAAAAAAAAABAAIAAAADAAQAAAACAAMAAAAEAAUA";
 
 const rotate = (axis: "x" | "y" | "z", degrees: number): Quaternion => {
   const angle = (degrees * Math.PI) / 360;
@@ -28,6 +31,13 @@ const box = (color: number, position: Vector3, size: Vector3, rotation?: Quatern
   position,
   size,
   rotation,
+});
+
+const wing = (position: Vector3): Part => ({
+  color: 0,
+  position,
+  size: [1, 1, 1],
+  mesh: "wing",
 });
 
 const palettes: Record<AircraftModelId, Array<[number, number, number, number]>> = {
@@ -83,10 +93,14 @@ const models: Record<AircraftModelId, Part[]> = {
     box(0, [0, 0, -0.95], [3.2, 0.65, 0.55]),
     box(2, [-1.25, 0, -0.65], [0.8, 0.9, 0.9]),
     box(3, [0.65, 0, -0.45], [0.8, 0.75, 0.7]),
-    box(1, [-0.2, 1.65, 1.25], [5.2, 0.62, 0.18], rotate("z", 23)),
-    box(1, [-0.2, -1.65, 1.25], [5.2, 0.62, 0.18], rotate("z", -23)),
-    box(0, [-1.65, 0, 1.25], [1.5, 7.1, 0.16]),
+    wing([0, 0, 1.35]),
+    box(2, [-0.05, 2.4, 1.45], [7.1, 0.12, 0.1], rotate("z", -42)),
+    box(2, [-0.05, -2.4, 1.45], [7.1, 0.12, 0.1], rotate("z", 42)),
+    box(2, [-2.65, 0, 1.42], [0.12, 9.5, 0.1]),
+    box(2, [0.65, 0, 1.56], [4.4, 0.12, 0.1]),
     box(2, [0, 0, 0.05], [0.16, 0.16, 2.5]),
+    box(3, [0, 1, 0.42], [0.1, 0.1, 2.65], rotate("x", -49)),
+    box(3, [0, -1, 0.42], [0.1, 0.1, 2.65], rotate("x", 49)),
     box(2, [-0.2, 0.52, -1.25], [2.4, 0.12, 0.12]),
     box(2, [-0.2, -0.52, -1.25], [2.4, 0.12, 0.12]),
   ],
@@ -157,10 +171,17 @@ function createModelUri(id: AircraftModelId) {
         uri: `data:application/octet-stream;base64,${CUBE_BUFFER}`,
         byteLength: 168,
       },
+      {
+        uri: `data:application/octet-stream;base64,${WING_BUFFER}`,
+        byteLength: 96,
+      },
     ],
     bufferViews: [
       { buffer: 0, byteOffset: 0, byteLength: 96, target: 34962 },
       { buffer: 0, byteOffset: 96, byteLength: 72, target: 34963 },
+      { buffer: 1, byteOffset: 0, byteLength: 72, target: 34962 },
+      { buffer: 1, byteOffset: 72, byteLength: 12, target: 34963 },
+      { buffer: 1, byteOffset: 84, byteLength: 12, target: 34963 },
     ],
     accessors: [
       {
@@ -172,13 +193,31 @@ function createModelUri(id: AircraftModelId) {
         max: [0.5, 0.5, 0.5],
       },
       { bufferView: 1, componentType: 5123, count: 36, type: "SCALAR" },
+      {
+        bufferView: 2,
+        componentType: 5126,
+        count: 6,
+        type: "VEC3",
+        min: [-2.7, -4.8, 0],
+        max: [2.8, 4.8, 0.8],
+      },
+      { bufferView: 3, componentType: 5123, count: 6, type: "SCALAR" },
+      { bufferView: 4, componentType: 5123, count: 6, type: "SCALAR" },
     ],
     materials,
-    meshes: materials.map((_, material) => ({
-      primitives: [{ attributes: { POSITION: 0 }, indices: 1, material }],
-    })),
+    meshes: [
+      ...materials.map((_, material) => ({
+        primitives: [{ attributes: { POSITION: 0 }, indices: 1, material }],
+      })),
+      {
+        primitives: [
+          { attributes: { POSITION: 2 }, indices: 3, material: 0 },
+          { attributes: { POSITION: 2 }, indices: 4, material: 1 },
+        ],
+      },
+    ],
     nodes: models[id].map((part) => ({
-      mesh: part.color,
+      mesh: part.mesh === "wing" ? materials.length : part.color,
       translation: part.position,
       scale: part.size,
       ...(part.rotation ? { rotation: part.rotation } : {}),
