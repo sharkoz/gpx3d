@@ -42,6 +42,7 @@ export async function importFlightFile(file: File): Promise<FlightRecord> {
     displayName: data.name,
     sourceFilename: file.name,
     importedAt: Date.now(),
+    altitudeOffset: 0,
     originalGpx,
     data,
   };

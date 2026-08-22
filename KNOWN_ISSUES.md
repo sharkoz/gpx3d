@@ -17,6 +17,8 @@
   comme EGM96, dont BasicAirData. Une référence inconnue reste affichée sans correction silencieuse.
 - La hauteur au-dessus du terrain n'apparaît qu'une fois la tuile de relief courante chargée et reste
   indicative malgré la conversion de référence verticale.
+- L'offset manuel et l'action de calage déplacent uniquement le rendu 3D. Les altitudes GPX, le vario
+  et les statistiques restent volontairement inchangés.
 - Une trace sans timestamps reste explorable en 3D, mais ne peut pas être rejouée. Une trace sans
   altitude conserve sa géométrie, sans vario ni analyse verticale.
 

@@ -68,6 +68,7 @@ export type FlightRecord = {
   displayName: string;
   sourceFilename: string;
   importedAt: number;
+  altitudeOffset?: number;
   originalGpx: string;
   data: FlightData;
 };

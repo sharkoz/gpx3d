@@ -9,6 +9,7 @@ import {
   renameFlight,
   requestPersistentStorage,
   saveFlight,
+  setFlightAltitudeOffset,
 } from "@/storage/database";
 
 async function loadLibrary() {
@@ -27,6 +28,7 @@ async function loadLibrary() {
         ...upgraded,
         displayName: record.displayName,
         importedAt: record.importedAt,
+        altitudeOffset: record.altitudeOffset ?? 0,
       };
       await saveFlight(preserved);
       migrated.push(preserved);
@@ -92,7 +94,23 @@ export default function App() {
   };
 
   if (activeFlight) {
-    return <FlightViewer record={activeFlight} onBack={() => setActiveFlight(null)} />;
+    return (
+      <FlightViewer
+        record={activeFlight}
+        onBack={() => setActiveFlight(null)}
+        onAltitudeOffsetChange={(altitudeOffset) => {
+          setActiveFlight((current) => (current ? { ...current, altitudeOffset } : current));
+          setFlights((current) =>
+            current.map((flight) =>
+              flight.id === activeFlight.id ? { ...flight, altitudeOffset } : flight,
+            ),
+          );
+          setFlightAltitudeOffset(activeFlight.id, altitudeOffset).catch(() =>
+            setError("L’offset d’altitude n’a pas pu être enregistré."),
+          );
+        }}
+      />
+    );
   }
 
   return (

@@ -14,6 +14,7 @@ Elle est publiée sur [sharkoz.github.io/gpx3d](https://sharkoz.github.io/gpx3d/
 - Courbes synchronisées et trajectoire colorée par altitude, vitesse, temps ou cap.
 - Interface française responsive pour ordinateur, tablette et téléphone.
 - Conversion locale EGM96 vers hauteur ellipsoïdale lorsque le producteur est identifié.
+- Offset vertical persistant et calage de la trajectoire sur le relief au point courant.
 
 ## Développement
 

@@ -26,9 +26,11 @@ import { type CameraMode, GlobeView, type MapStatus, type TrackMetric } from "./
 type FlightViewerProps = {
   record: FlightRecord;
   onBack: () => void;
+  onAltitudeOffsetChange: (altitudeOffset: number) => void;
 };
 
 const rates = [0.25, 0.5, 1, 2, 4, 10, 20];
+const MAX_ALTITUDE_OFFSET = 5_000;
 const cameraModes: Array<{ id: CameraMode; label: string; icon: typeof Bird }> = [
   { id: "overview", label: "Trace", icon: Maximize2 },
   { id: "bird", label: "Oiseau", icon: Bird },
@@ -57,8 +59,9 @@ function MetricReadout({
   );
 }
 
-export function FlightViewer({ record, onBack }: FlightViewerProps) {
+export function FlightViewer({ record, onBack, onAltitudeOffsetChange }: FlightViewerProps) {
   const { data: flight } = record;
+  const altitudeOffset = record.altitudeOffset ?? 0;
   const start = flight.summary.startTime ?? 0;
   const end = flight.summary.endTime ?? start;
   const [currentTime, setCurrentTime] = useState(start);
@@ -144,8 +147,19 @@ export function FlightViewer({ record, onBack }: FlightViewerProps) {
   const renderedElevation = currentPoint?.ellipsoidElevation ?? currentPoint?.elevation ?? null;
   const agl =
     renderedElevation !== null && groundElevation !== null
-      ? renderedElevation - groundElevation
+      ? renderedElevation + altitudeOffset - groundElevation
       : null;
+  const setAltitudeOffset = (value: number) => {
+    if (!Number.isFinite(value)) return;
+    onAltitudeOffsetChange(
+      Math.max(-MAX_ALTITUDE_OFFSET, Math.min(MAX_ALTITUDE_OFFSET, Math.round(value * 10) / 10)),
+    );
+  };
+  const snapOffset =
+    renderedElevation === null || groundElevation === null
+      ? null
+      : groundElevation - renderedElevation;
+  const signedOffset = `${altitudeOffset >= 0 ? "+" : ""}${altitudeOffset.toLocaleString("fr-FR", { maximumFractionDigits: 1 })} m`;
 
   return (
     <main className={`flight-viewer charts-${showCharts ? "open" : "closed"}`}>
@@ -154,6 +168,7 @@ export function FlightViewer({ record, onBack }: FlightViewerProps) {
         currentPoint={currentPoint}
         cameraMode={cameraMode}
         trackMetric={trackMetric}
+        altitudeOffset={altitudeOffset}
         onMapStatus={setMapStatus}
         onGroundElevation={setGroundElevation}
       />
@@ -289,6 +304,14 @@ export function FlightViewer({ record, onBack }: FlightViewerProps) {
           <option value="time">Temps</option>
           <option value="heading">Cap</option>
         </select>
+        <button
+          className="offset-summary"
+          type="button"
+          onClick={() => setShowAdvanced(true)}
+          aria-label={`Régler l’offset d’altitude, valeur actuelle ${signedOffset}`}
+        >
+          ALT {signedOffset}
+        </button>
       </div>
 
       <div className="mobile-hud">
@@ -323,6 +346,49 @@ export function FlightViewer({ record, onBack }: FlightViewerProps) {
               <X size={17} />
             </button>
           </div>
+          <section className="altitude-adjustment" aria-labelledby="altitude-adjustment-title">
+            <div className="altitude-adjustment-heading">
+              <div>
+                <span id="altitude-adjustment-title">Calage vertical</span>
+                <strong>{signedOffset}</strong>
+              </div>
+              <small>Rendu 3D uniquement</small>
+            </div>
+            <label className="offset-input">
+              <span>Offset d’altitude</span>
+              <input
+                type="number"
+                min={-MAX_ALTITUDE_OFFSET}
+                max={MAX_ALTITUDE_OFFSET}
+                step="0.5"
+                value={altitudeOffset}
+                onChange={(event) => setAltitudeOffset(Number(event.target.value))}
+              />
+              <em>m</em>
+            </label>
+            <div className="altitude-adjustment-actions">
+              <button
+                type="button"
+                onClick={() => setAltitudeOffset(0)}
+                disabled={altitudeOffset === 0}
+              >
+                Réinitialiser
+              </button>
+              <button
+                className="snap-ground-action"
+                type="button"
+                onClick={() => snapOffset !== null && setAltitudeOffset(snapOffset)}
+                disabled={snapOffset === null}
+              >
+                Coller ce point au sol
+              </button>
+            </div>
+            <p>
+              {snapOffset === null
+                ? "Le relief sous le point courant est encore indisponible."
+                : `Le point courant est à ${formatMetric(agl, "m", 1)} du relief. Le calage conserve tous les écarts du vol.`}
+            </p>
+          </section>
           <div className="advanced-grid">
             <MetricReadout
               label="Distance"

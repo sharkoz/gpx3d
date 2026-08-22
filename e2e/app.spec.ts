@@ -53,6 +53,24 @@ test("la bibliothèque permet de renommer et supprimer avec confirmation", async
   await expect(page.getByText("Aucun vol enregistré")).toBeVisible();
 });
 
+test("l’offset d’altitude est appliqué et persisté par vol", async ({ page }) => {
+  await page.goto("./");
+  await page.getByRole("button", { name: /Explorer la trace de démonstration/i }).click();
+  await expect(page.locator(".flight-viewer")).toBeVisible({ timeout: 15_000 });
+
+  await page.getByRole("button", { name: "Instruments avancés" }).click();
+  const offset = page.getByRole("spinbutton", { name: "Offset d’altitude" });
+  await offset.fill("25");
+  await expect(offset).toHaveValue("25");
+  await expect(page.getByRole("button", { name: /valeur actuelle \+25 m/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Coller ce point au sol" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Retour à la bibliothèque" }).click();
+  await page.locator(".flight-open").click();
+  await page.getByRole("button", { name: "Instruments avancés" }).click();
+  await expect(page.getByRole("spinbutton", { name: "Offset d’altitude" })).toHaveValue("25");
+});
+
 test("l’interface mobile conserve les commandes essentielles", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile", "Scénario mobile uniquement");
   await page.goto("./");

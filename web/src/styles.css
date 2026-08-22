@@ -954,6 +954,21 @@ input:focus-visible {
   background: #10262b;
   font-size: 0.66rem;
 }
+.offset-summary {
+  min-height: 30px;
+  padding: 0 9px;
+  color: var(--amber);
+  border: 0;
+  border-left: 1px solid rgba(141, 199, 194, 0.18);
+  background: transparent;
+  font-family: monospace;
+  font-size: 0.6rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.offset-summary:hover {
+  color: #ffe0a8;
+}
 .mobile-hud {
   display: none;
 }
@@ -993,6 +1008,96 @@ input:focus-visible {
   border: 0;
   background: transparent;
   cursor: pointer;
+}
+.altitude-adjustment {
+  margin: 14px 18px 6px;
+  padding: 14px;
+  border: 1px solid rgba(255, 189, 89, 0.24);
+  background: linear-gradient(135deg, rgba(64, 43, 15, 0.34), rgba(10, 29, 32, 0.52));
+}
+.altitude-adjustment-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 13px;
+}
+.altitude-adjustment-heading span,
+.altitude-adjustment-heading strong {
+  display: block;
+}
+.altitude-adjustment-heading span {
+  margin-bottom: 4px;
+  color: #8da1a3;
+  font-size: 0.56rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.altitude-adjustment-heading strong {
+  color: var(--amber);
+  font-family: monospace;
+  font-size: 1rem;
+}
+.altitude-adjustment-heading small {
+  color: #6f8487;
+  font-size: 0.5rem;
+  text-transform: uppercase;
+}
+.offset-input {
+  display: grid;
+  grid-template-columns: 1fr 92px 15px;
+  align-items: center;
+  gap: 6px;
+}
+.offset-input span {
+  color: #9aacad;
+  font-size: 0.6rem;
+}
+.offset-input input {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 8px;
+  color: var(--ink);
+  border: 1px solid rgba(255, 189, 89, 0.38);
+  background: #07171d;
+  font-family: monospace;
+  text-align: right;
+}
+.offset-input em {
+  color: #7e9295;
+  font-size: 0.6rem;
+  font-style: normal;
+}
+.altitude-adjustment-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.35fr;
+  gap: 7px;
+  margin-top: 11px;
+}
+.altitude-adjustment-actions button {
+  min-height: 38px;
+  padding: 5px 8px;
+  color: #9eb0b0;
+  border: 1px solid rgba(141, 199, 194, 0.18);
+  background: rgba(3, 14, 19, 0.6);
+  font-size: 0.56rem;
+  cursor: pointer;
+}
+.altitude-adjustment-actions button:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+.altitude-adjustment-actions .snap-ground-action {
+  color: #241704;
+  border-color: var(--amber);
+  background: var(--amber);
+  font-weight: 700;
+}
+.altitude-adjustment > p {
+  margin: 11px 0 0;
+  color: #758b8e;
+  font-size: 0.54rem;
+  line-height: 1.5;
 }
 .advanced-grid {
   display: grid;

@@ -27,6 +27,10 @@ export async function renameFlight(id: string, displayName: string) {
   await database.flights.update(id, { displayName: normalized });
 }
 
+export async function setFlightAltitudeOffset(id: string, altitudeOffset: number) {
+  await database.flights.update(id, { altitudeOffset });
+}
+
 export async function deleteFlight(id: string) {
   await database.flights.delete(id);
 }

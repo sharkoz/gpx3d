@@ -13,6 +13,7 @@ type GlobeViewProps = {
   currentPoint: InterpolatedPoint | null;
   cameraMode: CameraMode;
   trackMetric: TrackMetric;
+  altitudeOffset: number;
   onMapStatus: (status: MapStatus) => void;
   onGroundElevation: (elevation: number | null) => void;
 };
@@ -28,8 +29,10 @@ const markerSvg = `data:image/svg+xml,${encodeURIComponent(`
   </svg>
 `)}`;
 
-const renderHeight = (point: Pick<FlightPoint, "elevation" | "ellipsoidElevation">) =>
-  point.ellipsoidElevation ?? point.elevation ?? 0;
+const renderHeight = (
+  point: Pick<FlightPoint, "elevation" | "ellipsoidElevation">,
+  altitudeOffset: number,
+) => (point.ellipsoidElevation ?? point.elevation ?? 0) + altitudeOffset;
 
 function metricValue(point: FlightPoint, metric: TrackMetric) {
   if (metric === "altitude") return point.elevation;
@@ -104,6 +107,7 @@ function addTrack(
   viewer: import("cesium").Viewer,
   flight: FlightData,
   metric: TrackMetric,
+  altitudeOffset: number,
 ) {
   const collection = viewer.scene.primitives.add(new C.PolylineCollection());
   const [minimum, maximum] = metricRange(flight.points, metric);
@@ -113,8 +117,8 @@ function addTrack(
     const from = flight.points[index - step];
     const to = flight.points[index];
     if (from.segmentIndex !== to.segmentIndex) continue;
-    const fromHeight = renderHeight(from) + 2;
-    const toHeight = renderHeight(to) + 2;
+    const fromHeight = renderHeight(from, altitudeOffset) + 2;
+    const toHeight = renderHeight(to, altitudeOffset) + 2;
     collection.add({
       positions: [
         C.Cartesian3.fromDegrees(from.longitude, from.latitude, fromHeight),
@@ -195,13 +199,18 @@ function fitFlight(
   C: CesiumModule,
   viewer: import("cesium").Viewer,
   flight: FlightData,
+  altitudeOffset: number,
   duration = 1.2,
 ) {
   const stride = Math.max(1, Math.ceil(flight.points.length / 4_000));
   const positions = flight.points
     .filter((_, index) => index % stride === 0)
     .map((point) =>
-      C.Cartesian3.fromDegrees(point.longitude, point.latitude, renderHeight(point) + 2),
+      C.Cartesian3.fromDegrees(
+        point.longitude,
+        point.latitude,
+        renderHeight(point, altitudeOffset) + 2,
+      ),
     );
   const sphere = C.BoundingSphere.fromPoints(positions);
   const centre = C.Cartographic.fromCartesian(sphere.center);
@@ -218,6 +227,7 @@ export function GlobeView({
   currentPoint,
   cameraMode,
   trackMetric,
+  altitudeOffset,
   onMapStatus,
   onGroundElevation,
 }: GlobeViewProps) {
@@ -227,9 +237,11 @@ export function GlobeView({
   const markerRef = useRef<import("cesium").Entity | null>(null);
   const trackRef = useRef<import("cesium").PolylineCollection | null>(null);
   const trackMetricRef = useRef(trackMetric);
+  const altitudeOffsetRef = useRef(altitudeOffset);
   const latestGroundSample = useRef(0);
   const [sceneError, setSceneError] = useState<string | null>(null);
   trackMetricRef.current = trackMetric;
+  altitudeOffsetRef.current = altitudeOffset;
 
   useEffect(() => {
     let cancelled = false;
@@ -281,12 +293,18 @@ export function GlobeView({
         // The globe base color is the final no-network fallback.
       }
 
-      trackRef.current = addTrack(C, viewer, flight, trackMetricRef.current);
+      trackRef.current = addTrack(
+        C,
+        viewer,
+        flight,
+        trackMetricRef.current,
+        altitudeOffsetRef.current,
+      );
       markerRef.current = viewer.entities.add({
         position: C.Cartesian3.fromDegrees(
           flight.points[0].longitude,
           flight.points[0].latitude,
-          renderHeight(flight.points[0]) + 4,
+          renderHeight(flight.points[0], altitudeOffsetRef.current) + 4,
         ),
         billboard: {
           image: markerSvg,
@@ -300,6 +318,7 @@ export function GlobeView({
         C,
         viewer,
         flight,
+        altitudeOffsetRef.current,
         window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 1.2,
       );
       configureMap(C, viewer, onMapStatus).catch(() => onMapStatus("fallback"));
@@ -327,15 +346,15 @@ export function GlobeView({
     const viewer = viewerRef.current;
     if (!C || !viewer) return;
     if (trackRef.current) viewer.scene.primitives.remove(trackRef.current);
-    trackRef.current = addTrack(C, viewer, flight, trackMetric);
-  }, [flight, trackMetric]);
+    trackRef.current = addTrack(C, viewer, flight, trackMetric, altitudeOffset);
+  }, [altitudeOffset, flight, trackMetric]);
 
   useEffect(() => {
     const C = cesiumRef.current;
     const viewer = viewerRef.current;
     const marker = markerRef.current;
     if (!C || !viewer || !marker || !currentPoint) return;
-    const height = renderHeight(currentPoint) + 4;
+    const height = renderHeight(currentPoint, altitudeOffset) + 4;
     const destination = C.Cartesian3.fromDegrees(
       currentPoint.longitude,
       currentPoint.latitude,
@@ -383,7 +402,7 @@ export function GlobeView({
       );
       onGroundElevation(Number.isFinite(ground) ? (ground ?? null) : null);
     }
-  }, [cameraMode, currentPoint, onGroundElevation]);
+  }, [altitudeOffset, cameraMode, currentPoint, onGroundElevation]);
 
   useEffect(() => {
     if (cameraMode !== "overview") return;
@@ -395,9 +414,10 @@ export function GlobeView({
       C,
       viewer,
       flight,
+      altitudeOffset,
       window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 0.8,
     );
-  }, [cameraMode, flight]);
+  }, [altitudeOffset, cameraMode, flight]);
 
   return (
     <>
