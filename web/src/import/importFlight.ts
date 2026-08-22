@@ -53,5 +53,8 @@ export async function loadDemoFlight() {
   const response = await fetch(`${import.meta.env.BASE_URL}demo.gpx`);
   if (!response.ok) throw new Error("La trace de démonstration est indisponible.");
   const blob = await response.blob();
-  return importFlightFile(new File([blob], "demo.gpx", { type: "application/gpx+xml" }));
+  const record = await importFlightFile(
+    new File([blob], "demo.gpx", { type: "application/gpx+xml" }),
+  );
+  return { ...record, aircraftModelId: "ultralight" as const };
 }
