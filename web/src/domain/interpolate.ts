@@ -2,11 +2,17 @@ import { interpolateLongitude, shortestAngle } from "./geo";
 import type { FlightPoint } from "./types";
 
 export type InterpolatedPoint = FlightPoint & { fraction: number };
+export type TimedFlightPoint = FlightPoint & { time: number };
 
-export function pointAtTime(points: FlightPoint[], time: number): InterpolatedPoint | null {
-  const timed = points.filter(
-    (point): point is FlightPoint & { time: number } => point.time !== null,
-  );
+export const createTimeline = (points: FlightPoint[]) =>
+  points.filter((point): point is TimedFlightPoint => point.time !== null);
+
+export function pointAtTime(
+  points: FlightPoint[],
+  time: number,
+  timeline?: TimedFlightPoint[],
+): InterpolatedPoint | null {
+  const timed = timeline ?? createTimeline(points);
   if (timed.length === 0) return null;
   const first = timed[0];
   const last = timed[timed.length - 1];
@@ -37,6 +43,7 @@ export function pointAtTime(points: FlightPoint[], time: number): InterpolatedPo
     latitude: from.latitude + (to.latitude - from.latitude) * fraction,
     longitude: interpolateLongitude(from.longitude, to.longitude, fraction),
     elevation: interpolate(from.elevation, to.elevation),
+    ellipsoidElevation: interpolate(from.ellipsoidElevation, to.ellipsoidElevation),
     sourceSpeed: interpolate(from.sourceSpeed, to.sourceSpeed),
     calculatedSpeed: interpolate(from.calculatedSpeed, to.calculatedSpeed),
     verticalSpeed: interpolate(from.verticalSpeed, to.verticalSpeed),

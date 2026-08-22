@@ -11,6 +11,7 @@ export type FlightPoint = {
   latitude: number;
   longitude: number;
   elevation: number | null;
+  ellipsoidElevation: number | null;
   time: number | null;
   sourceSpeed: number | null;
   sourceCourse: number | null;
@@ -50,7 +51,7 @@ export type FlightSummary = {
 };
 
 export type FlightData = {
-  schemaVersion: 1;
+  schemaVersion: 2;
   name: string;
   creator: string | null;
   gpxVersion: string | null;

@@ -6,10 +6,10 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   root: "web",
   base: "/gpx3d/",
-  publicDir: false,
+  publicDir: "public",
   resolve: {
     alias: {
-      "@": fileURLToPath(new URL("./src", import.meta.url)),
+      "@": fileURLToPath(new URL("./web/src", import.meta.url)),
     },
   },
   plugins: [
@@ -45,6 +45,6 @@ export default defineConfig({
     },
   },
   test: {
-    include: ["../src/**/*.test.ts"],
+    include: ["src/**/*.test.ts"],
   },
 });

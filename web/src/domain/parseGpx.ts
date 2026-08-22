@@ -25,6 +25,7 @@ const emptyPoint = (index: number, segmentIndex: number): FlightPoint => ({
   latitude: Number.NaN,
   longitude: Number.NaN,
   elevation: null,
+  ellipsoidElevation: null,
   time: null,
   sourceSpeed: null,
   sourceCourse: null,
@@ -178,7 +179,7 @@ export function parseGpx(xml: string, fallbackName = "Vol sans titre"): FlightDa
   }
 
   return analyzeFlight({
-    schemaVersion: 1,
+    schemaVersion: 2,
     name: trackName ?? documentName ?? fallbackName,
     creator,
     gpxVersion,

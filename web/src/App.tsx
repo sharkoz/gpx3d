@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { FlightViewer } from "@/components/FlightViewer";
 import { Landing } from "@/components/Landing";
 import type { FlightRecord } from "@/domain/types";
 import { importFlightFile, loadDemoFlight } from "@/import/importFlight";
@@ -10,16 +11,42 @@ import {
   saveFlight,
 } from "@/storage/database";
 
+async function loadLibrary() {
+  const stored = await listFlights();
+  const migrated: FlightRecord[] = [];
+  for (const record of stored) {
+    if (Number(record.data.schemaVersion) === 2) {
+      migrated.push(record);
+      continue;
+    }
+    try {
+      const upgraded = await importFlightFile(
+        new File([record.originalGpx], record.sourceFilename, { type: "application/gpx+xml" }),
+      );
+      const preserved = {
+        ...upgraded,
+        displayName: record.displayName,
+        importedAt: record.importedAt,
+      };
+      await saveFlight(preserved);
+      migrated.push(preserved);
+    } catch {
+      migrated.push(record);
+    }
+  }
+  return migrated;
+}
+
 export default function App() {
   const [flights, setFlights] = useState<FlightRecord[]>([]);
   const [activeFlight, setActiveFlight] = useState<FlightRecord | null>(null);
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const refreshFlights = async () => setFlights(await listFlights());
+  const refreshFlights = async () => setFlights(await loadLibrary());
 
   useEffect(() => {
-    listFlights()
+    loadLibrary()
       .then(setFlights)
       .catch(() => setError("La bibliothèque locale n’est pas accessible."));
   }, []);
@@ -65,15 +92,7 @@ export default function App() {
   };
 
   if (activeFlight) {
-    return (
-      <div className="viewer-placeholder">
-        <button type="button" onClick={() => setActiveFlight(null)}>
-          Retour aux vols
-        </button>
-        <h1>{activeFlight.displayName}</h1>
-        <p>Scène 3D en préparation.</p>
-      </div>
-    );
+    return <FlightViewer record={activeFlight} onBack={() => setActiveFlight(null)} />;
   }
 
   return (

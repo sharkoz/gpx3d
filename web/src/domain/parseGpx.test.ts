@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { parseGpx } from "./parseGpx";
 
-const demo = readFileSync(new URL("../../demo.gpx", import.meta.url), "utf8");
+const demo = readFileSync(new URL("../../public/demo.gpx", import.meta.url), "utf8");
 
 describe("parseGpx", () => {
   it("préserve les données source BasicAirData et leur référence verticale", () => {
