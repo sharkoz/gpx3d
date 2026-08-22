@@ -16,6 +16,7 @@ function localLinearSlope(points: FlightPoint[], centre: number, halfWindowSecon
   for (let index = centre; index >= 0; index -= 1) {
     const point = points[index];
     if (point.segmentIndex !== points[centre].segmentIndex || point.time === null) break;
+    if (index < centre && points[index + 1].gapBefore) break;
     const offset = (point.time - centreTime) / 1_000;
     if (Math.abs(offset) > halfWindowSeconds) break;
     if (point.elevation !== null) samples.unshift([offset, point.elevation]);
@@ -23,6 +24,7 @@ function localLinearSlope(points: FlightPoint[], centre: number, halfWindowSecon
   for (let index = centre + 1; index < points.length; index += 1) {
     const point = points[index];
     if (point.segmentIndex !== points[centre].segmentIndex || point.time === null) break;
+    if (point.gapBefore) break;
     const offset = (point.time - centreTime) / 1_000;
     if (Math.abs(offset) > halfWindowSeconds) break;
     if (point.elevation !== null) samples.push([offset, point.elevation]);
@@ -66,6 +68,7 @@ export function analyzeFlight(data: Omit<FlightData, "summary">): FlightData {
   for (let index = 1; index < points.length; index += 1) {
     const previous = points[index - 1];
     const point = points[index];
+    point.distance = totalDistance;
     if (previous.segmentIndex !== point.segmentIndex) continue;
     const edgeDistance = distanceMetres(
       previous.latitude,

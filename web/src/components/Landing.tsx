@@ -13,7 +13,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatDistance, formatDuration, formatLocalDate } from "@/domain/format";
 import type { FlightRecord } from "@/domain/types";
 
@@ -41,8 +41,14 @@ export function Landing({
   onClearError,
 }: LandingProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const renameInputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (editingId) renameInputRef.current?.focus();
+  }, [editingId]);
 
   const acceptDrop = (event: React.DragEvent) => {
     event.preventDefault();
@@ -121,6 +127,7 @@ export function Landing({
             ref={inputRef}
             className="visually-hidden"
             type="file"
+            aria-label="Choisir une ou plusieurs traces GPX"
             accept=".gpx,application/gpx+xml,application/xml,text/xml"
             multiple
             onChange={(event) => {
@@ -176,22 +183,7 @@ export function Landing({
                 <button className="flight-open" type="button" onClick={() => onOpen(flight)}>
                   <span className="strip-index">{String(index + 1).padStart(2, "0")}</span>
                   <span className="strip-main">
-                    {editingId === flight.id ? (
-                      <input
-                        defaultValue={flight.displayName}
-                        onClick={(event) => event.stopPropagation()}
-                        onBlur={(event) => {
-                          onRename(flight.id, event.target.value);
-                          setEditingId(null);
-                        }}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter") event.currentTarget.blur();
-                          if (event.key === "Escape") setEditingId(null);
-                        }}
-                      />
-                    ) : (
-                      <strong>{flight.displayName}</strong>
-                    )}
+                    <strong>{flight.displayName}</strong>
                     <span>{formatLocalDate(flight.data.summary.startTime)}</span>
                   </span>
                   <span className="strip-stat">
@@ -204,6 +196,23 @@ export function Landing({
                   </span>
                   <ChevronRight className="strip-arrow" size={20} />
                 </button>
+                {editingId === flight.id && (
+                  <div className="rename-panel">
+                    <input
+                      ref={renameInputRef}
+                      aria-label={`Nouveau nom de ${flight.displayName}`}
+                      defaultValue={flight.displayName}
+                      onBlur={(event) => {
+                        onRename(flight.id, event.target.value);
+                        setEditingId(null);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") event.currentTarget.blur();
+                        if (event.key === "Escape") setEditingId(null);
+                      }}
+                    />
+                  </div>
+                )}
                 <div className="strip-actions">
                   <button
                     type="button"
@@ -215,11 +224,33 @@ export function Landing({
                   <button
                     type="button"
                     aria-label={`Supprimer ${flight.displayName}`}
-                    onClick={() => onDelete(flight.id)}
+                    onClick={() => setPendingDeleteId(flight.id)}
                   >
                     <Trash2 size={15} />
                   </button>
                 </div>
+                {pendingDeleteId === flight.id && (
+                  <div
+                    className="delete-confirm"
+                    role="alertdialog"
+                    aria-label={`Confirmer la suppression de ${flight.displayName}`}
+                  >
+                    <span>Supprimer ce vol local ?</span>
+                    <button type="button" onClick={() => setPendingDeleteId(null)}>
+                      Annuler
+                    </button>
+                    <button
+                      className="confirm-danger"
+                      type="button"
+                      onClick={() => {
+                        setPendingDeleteId(null);
+                        onDelete(flight.id);
+                      }}
+                    >
+                      Supprimer
+                    </button>
+                  </div>
+                )}
               </article>
             ))}
           </div>

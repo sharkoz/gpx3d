@@ -25,7 +25,37 @@ describe("parseGpx", () => {
 
     expect(flight.summary.segmentCount).toBe(2);
     expect(flight.points[2].calculatedSpeed).toBeNull();
+    expect(flight.points[2].distance).toBe(flight.points[1].distance);
     expect(flight.summary.distance).toBeLessThan(250);
+  });
+
+  it("lit les extensions de vitesse Garmin v2 dans un GPX 1.1", () => {
+    const xml = `<?xml version="1.0"?><gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1" xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v2"><metadata><name>Vol Garmin</name></metadata><trk><trkseg><trkpt lat="45" lon="1"><time>2026-01-01T00:00:00Z</time><extensions><gpxtpx:TrackPointExtension><gpxtpx:speed>12.5</gpxtpx:speed><gpxtpx:course>359</gpxtpx:course></gpxtpx:TrackPointExtension></extensions></trkpt><trkpt lat="45.001" lon="1.001"><time>2026-01-01T00:00:01Z</time></trkpt></trkseg></trk></gpx>`;
+    const flight = parseGpx(xml);
+
+    expect(flight.name).toBe("Vol Garmin");
+    expect(flight.points[0].sourceSpeed).toBe(12.5);
+    expect(flight.points[0].sourceCourse).toBe(359);
+  });
+
+  it("conserve une trace géométrique sans données temporelles ni altitude", () => {
+    const xml = `<?xml version="1.0"?><gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1"><trk><trkseg><trkpt lat="45" lon="1"/><trkpt lat="45.001" lon="1.001"/></trkseg></trk></gpx>`;
+    const flight = parseGpx(xml);
+
+    expect(flight.summary.duration).toBeNull();
+    expect(flight.bounds.minElevation).toBeNull();
+    expect(flight.summary.distance).toBeGreaterThan(100);
+    expect(flight.warnings.join(" ")).toContain("heure exploitable");
+  });
+
+  it("marque les interruptions temporelles sans lisser le vario au travers", () => {
+    const xml = `<?xml version="1.0"?><gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1"><trk><trkseg><trkpt lat="45" lon="1"><ele>10</ele><time>2026-01-01T00:00:00Z</time></trkpt><trkpt lat="45.001" lon="1"><ele>11</ele><time>2026-01-01T00:00:01Z</time></trkpt><trkpt lat="45.002" lon="1"><ele>200</ele><time>2026-01-01T00:10:00Z</time></trkpt><trkpt lat="45.003" lon="1"><ele>201</ele><time>2026-01-01T00:10:01Z</time></trkpt></trkseg></trk></gpx>`;
+    const flight = parseGpx(xml);
+
+    expect(flight.points[2].gapBefore).toBe(true);
+    expect(flight.points[2].calculatedSpeed).toBeNull();
+    expect(flight.points[1].verticalSpeed).toBeNull();
+    expect(flight.points[2].verticalSpeed).toBeNull();
   });
 
   it("refuse les déclarations d'entités XML", () => {

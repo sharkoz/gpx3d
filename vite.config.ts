@@ -21,12 +21,15 @@ export default defineConfig({
           dest: "cesium",
           rename: { stripBase: 4 },
         },
+        { src: "public/**/*", dest: ".", rename: { stripBase: 1 } },
       ],
     }),
   ],
   build: {
     outDir: "..",
     emptyOutDir: false,
+    copyPublicDir: false,
+    chunkSizeWarningLimit: 5_000,
     sourcemap: false,
     rollupOptions: {
       output: {

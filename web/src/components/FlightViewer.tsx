@@ -280,6 +280,7 @@ export function FlightViewer({ record, onBack }: FlightViewerProps) {
         <label htmlFor="track-metric">Couleur</label>
         <select
           id="track-metric"
+          aria-label="Coloration de la trajectoire"
           value={trackMetric}
           onChange={(event) => setTrackMetric(event.target.value as TrackMetric)}
         >
@@ -432,7 +433,11 @@ export function FlightViewer({ record, onBack }: FlightViewerProps) {
           <time className="total-time">{formatDuration(flight.summary.duration)}</time>
           <label className="rate-control">
             <span>Vitesse</span>
-            <select value={rate} onChange={(event) => setRate(Number(event.target.value))}>
+            <select
+              aria-label="Vitesse de lecture"
+              value={rate}
+              onChange={(event) => setRate(Number(event.target.value))}
+            >
               {rates.map((value) => (
                 <option key={value} value={value}>
                   {String(value).replace(".", ",")}×

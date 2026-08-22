@@ -7,6 +7,7 @@ const GPX_NAMESPACES = new Set([
   "http://www.topografix.com/GPX/1/1",
   "",
 ]);
+const GARMIN_TRACKPOINT_V2 = "http://www.garmin.com/xmlschemas/TrackPointExtension/v2";
 
 const finiteNumber = (text: string) => {
   if (!text.trim() || text.includes(",")) return null;
@@ -114,27 +115,32 @@ export function parseGpx(xml: string, fallbackName = "Vol sans titre"): FlightDa
     const parent = stack.at(-2);
     const value = text.trim();
     const isGpxElement = GPX_NAMESPACES.has(tag.uri);
+    const isSourceMetric = isGpxElement || tag.uri === GARMIN_TRACKPOINT_V2;
 
-    if (currentPoint && isGpxElement) {
-      if (tag.local === "ele") currentPoint.elevation = finiteNumber(value);
-      else if (tag.local === "time") {
+    if (currentPoint) {
+      if (isGpxElement && tag.local === "ele") currentPoint.elevation = finiteNumber(value);
+      else if (isGpxElement && tag.local === "time") {
         const hasTimezone = /(Z|[+-]\d{2}:\d{2})$/i.test(value);
         const parsed = hasTimezone ? Date.parse(value) : Number.NaN;
         currentPoint.time = Number.isFinite(parsed) ? parsed : null;
         if (value && currentPoint.time === null) warnings.push(`Horodatage non reconnu : ${value}`);
-      } else if (tag.local === "speed") {
+      } else if (isSourceMetric && tag.local === "speed") {
         const speed = finiteNumber(value);
         currentPoint.sourceSpeed = speed !== null && speed >= 0 ? speed : null;
-      } else if (tag.local === "course") {
+        if (isGpxElement && gpxVersion === "1.1") {
+          warnings.push("Vitesse directe non standard rencontrée dans un GPX 1.1.");
+        }
+      } else if (isSourceMetric && tag.local === "course") {
         const course = finiteNumber(value);
         currentPoint.sourceCourse = course !== null && course >= 0 && course <= 360 ? course : null;
-      } else if (tag.local === "sat") {
+      } else if (isGpxElement && tag.local === "sat") {
         const satellites = finiteNumber(value);
         currentPoint.satellites = satellites !== null ? Math.round(satellites) : null;
       }
     }
 
-    if (tag.local === "name" && parent?.local === "gpx") documentName = value || null;
+    if (tag.local === "name" && (parent?.local === "gpx" || parent?.local === "metadata"))
+      documentName = value || null;
     if (tag.local === "name" && parent?.local === "trk" && !trackName) trackName = value || null;
     if (tag.local === "trkpt" && currentPoint) {
       if (

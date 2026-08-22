@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
 test("importe la démo et ouvre le lecteur 3D", async ({ page }) => {
@@ -31,6 +32,27 @@ test("le lecteur avance et expose les vues caméra", async ({ page }) => {
   await expect(page.getByTitle("Trace")).toHaveClass(/is-active/);
 });
 
+test("la bibliothèque permet de renommer et supprimer avec confirmation", async ({ page }) => {
+  await page.goto("./");
+  await page.getByRole("button", { name: /Explorer la trace de démonstration/i }).click();
+  await expect(page.locator(".flight-viewer")).toBeVisible({ timeout: 15_000 });
+  await page.getByRole("button", { name: "Retour à la bibliothèque" }).click();
+
+  await page.getByRole("button", { name: /Renommer Tracé/i }).click();
+  const name = page.getByRole("textbox", { name: /Nouveau nom/i });
+  await name.fill("Tour de piste");
+  await name.press("Enter");
+  await expect(page.getByText("Tour de piste")).toBeVisible();
+
+  await page.getByRole("button", { name: "Supprimer Tour de piste" }).click();
+  await expect(page.getByRole("alertdialog", { name: /Confirmer la suppression/i })).toBeVisible();
+  await page.getByRole("button", { name: "Annuler" }).click();
+  await expect(page.getByText("Tour de piste")).toBeVisible();
+  await page.getByRole("button", { name: "Supprimer Tour de piste" }).click();
+  await page.getByRole("button", { name: "Supprimer", exact: true }).click();
+  await expect(page.getByText("Aucun vol enregistré")).toBeVisible();
+});
+
 test("l’interface mobile conserve les commandes essentielles", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile", "Scénario mobile uniquement");
   await page.goto("./");
@@ -39,4 +61,20 @@ test("l’interface mobile conserve les commandes essentielles", async ({ page }
   await expect(page.locator(".altitude-tape")).toBeHidden();
   await expect(page.getByRole("button", { name: "Lecture" })).toBeVisible();
   await expect(page.getByRole("slider", { name: "Position dans le vol" })).toBeVisible();
+});
+
+test("les écrans principaux respectent les règles WCAG automatisables", async ({ page }) => {
+  await page.goto("./");
+  const landing = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+    .analyze();
+  expect(landing.violations, JSON.stringify(landing.violations, null, 2)).toEqual([]);
+
+  await page.getByRole("button", { name: /Explorer la trace de démonstration/i }).click();
+  await expect(page.locator(".flight-viewer")).toBeVisible({ timeout: 15_000 });
+  const viewer = await new AxeBuilder({ page })
+    .exclude(".cesium-widget-credits")
+    .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+    .analyze();
+  expect(viewer.violations, JSON.stringify(viewer.violations, null, 2)).toEqual([]);
 });
