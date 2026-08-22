@@ -239,7 +239,9 @@ export function GlobeView({
   const trackMetricRef = useRef(trackMetric);
   const altitudeOffsetRef = useRef(altitudeOffset);
   const latestGroundSample = useRef(0);
+  const groundSampleId = useRef(0);
   const [sceneError, setSceneError] = useState<string | null>(null);
+  const [sceneReady, setSceneReady] = useState(false);
   trackMetricRef.current = trackMetric;
   altitudeOffsetRef.current = altitudeOffset;
 
@@ -247,6 +249,7 @@ export function GlobeView({
     let cancelled = false;
     let viewer: import("cesium").Viewer | null = null;
     setSceneError(null);
+    setSceneReady(false);
 
     const initialise = async () => {
       const C = await import("cesium");
@@ -321,7 +324,8 @@ export function GlobeView({
         altitudeOffsetRef.current,
         window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 1.2,
       );
-      configureMap(C, viewer, onMapStatus).catch(() => onMapStatus("fallback"));
+      await configureMap(C, viewer, onMapStatus).catch(() => onMapStatus("fallback"));
+      if (!cancelled) setSceneReady(true);
     };
 
     initialise().catch((error) => {
@@ -334,6 +338,8 @@ export function GlobeView({
     });
     return () => {
       cancelled = true;
+      groundSampleId.current += 1;
+      latestGroundSample.current = 0;
       viewerRef.current = null;
       markerRef.current = null;
       trackRef.current = null;
@@ -353,7 +359,7 @@ export function GlobeView({
     const C = cesiumRef.current;
     const viewer = viewerRef.current;
     const marker = markerRef.current;
-    if (!C || !viewer || !marker || !currentPoint) return;
+    if (!sceneReady || !C || !viewer || !marker || !currentPoint) return;
     const height = renderHeight(currentPoint, altitudeOffset) + 4;
     const destination = C.Cartesian3.fromDegrees(
       currentPoint.longitude,
@@ -397,12 +403,21 @@ export function GlobeView({
     const now = performance.now();
     if (now - latestGroundSample.current > 600) {
       latestGroundSample.current = now;
-      const ground = viewer.scene.globe.getHeight(
-        C.Cartographic.fromDegrees(currentPoint.longitude, currentPoint.latitude),
-      );
-      onGroundElevation(Number.isFinite(ground) ? (ground ?? null) : null);
+      const sampleId = ++groundSampleId.current;
+      const position = C.Cartographic.fromDegrees(currentPoint.longitude, currentPoint.latitude);
+      const reportGround = (ground: number | undefined) => {
+        if (sampleId !== groundSampleId.current) return;
+        onGroundElevation(Number.isFinite(ground) ? (ground ?? null) : null);
+      };
+      if (viewer.terrainProvider instanceof C.EllipsoidTerrainProvider) {
+        reportGround(undefined);
+      } else {
+        void C.sampleTerrain(viewer.terrainProvider, 14, [position])
+          .then(([sampledPosition]) => reportGround(sampledPosition?.height))
+          .catch(() => reportGround(viewer.scene.globe.getHeight(position)));
+      }
     }
-  }, [altitudeOffset, cameraMode, currentPoint, onGroundElevation]);
+  }, [altitudeOffset, cameraMode, currentPoint, onGroundElevation, sceneReady]);
 
   useEffect(() => {
     if (cameraMode !== "overview") return;
