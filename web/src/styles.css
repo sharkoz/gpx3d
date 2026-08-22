@@ -586,6 +586,11 @@ input:focus-visible {
 
 .flight-viewer {
   --console-height: 252px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --header-height: 68px;
+  --header-total: calc(var(--header-height) + var(--safe-top));
+  --console-total: calc(var(--console-height) + var(--safe-bottom));
   position: fixed;
   inset: 0;
   overflow: hidden;
@@ -607,7 +612,7 @@ input:focus-visible {
   height: 100%;
 }
 .cesium-viewer-bottom {
-  bottom: calc(var(--console-height) + 4px);
+  bottom: calc(var(--console-total) + 4px);
   left: 8px;
 }
 .cesium-widget-credits {
@@ -643,8 +648,8 @@ input:focus-visible {
   display: grid;
   grid-template-columns: 48px 72px minmax(180px, 1fr) auto 48px;
   align-items: center;
-  min-height: 68px;
-  padding: 0 18px;
+  min-height: var(--header-total);
+  padding: var(--safe-top) 18px 0;
   border-bottom: 1px solid rgba(154, 212, 207, 0.18);
   background: linear-gradient(180deg, rgba(3, 12, 17, 0.94), rgba(3, 12, 17, 0.68));
   backdrop-filter: blur(14px);
@@ -727,7 +732,7 @@ input:focus-visible {
 .compass-ribbon {
   position: absolute;
   z-index: 3;
-  top: 76px;
+  top: calc(var(--header-total) + 8px);
   left: 50%;
   width: min(460px, 46vw);
   height: 54px;
@@ -789,7 +794,7 @@ input:focus-visible {
 .instrument-tape {
   position: absolute;
   z-index: 3;
-  top: 136px;
+  top: calc(var(--header-total) + 68px);
   width: 146px;
   min-height: 250px;
   padding: 18px;
@@ -890,7 +895,7 @@ input:focus-visible {
   position: absolute;
   z-index: 4;
   left: 50%;
-  bottom: calc(var(--console-height) + 14px);
+  bottom: calc(var(--console-total) + 14px);
   display: flex;
   margin: 0;
   padding: 0;
@@ -928,7 +933,7 @@ input:focus-visible {
   position: absolute;
   z-index: 4;
   right: 18px;
-  bottom: calc(var(--console-height) + 14px);
+  bottom: calc(var(--console-total) + 14px);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -956,9 +961,9 @@ input:focus-visible {
 .advanced-rail {
   position: absolute;
   z-index: 7;
-  top: 68px;
+  top: var(--header-total);
   right: 0;
-  bottom: var(--console-height);
+  bottom: var(--console-total);
   width: min(340px, 90vw);
   overflow-y: auto;
   border-left: 1px solid rgba(138, 200, 194, 0.24);
@@ -1041,12 +1046,40 @@ input:focus-visible {
   left: 0;
   right: 0;
   bottom: 0;
-  height: var(--console-height);
+  height: var(--console-total);
+  padding-bottom: var(--safe-bottom);
   border-top: 1px solid rgba(143, 202, 197, 0.26);
   background: rgba(3, 13, 18, 0.96);
   box-shadow: 0 -18px 60px rgba(0, 0, 0, 0.35);
   backdrop-filter: blur(17px);
   transition: height 0.22s ease;
+}
+.globe-error {
+  position: absolute;
+  z-index: 2;
+  inset: var(--header-total) 0 var(--console-total);
+  display: grid;
+  place-content: center;
+  gap: 8px;
+  padding: 28px;
+  color: #dce8e6;
+  background: radial-gradient(circle, rgba(17, 49, 53, 0.96), rgba(3, 12, 17, 0.98));
+  text-align: center;
+}
+.globe-error strong {
+  color: var(--amber);
+  font-family: "Arial Narrow", sans-serif;
+  font-size: 1.4rem;
+  text-transform: uppercase;
+}
+.globe-error span {
+  max-width: 520px;
+  color: #9dafb0;
+  font-size: 0.75rem;
+}
+.globe-error small {
+  color: #718588;
+  font-size: 0.62rem;
 }
 .chart-console {
   position: relative;
@@ -1380,14 +1413,15 @@ input:focus-visible {
   }
   .flight-viewer {
     --console-height: 235px;
+    --header-height: 58px;
   }
   .flight-viewer.charts-closed {
     --console-height: 88px;
   }
   .viewer-header {
     grid-template-columns: 42px 46px minmax(0, 1fr) 24px 42px;
-    min-height: 58px;
-    padding: 0 7px;
+    min-height: var(--header-total);
+    padding: var(--safe-top) 7px 0;
   }
   .icon-action {
     width: 36px;
@@ -1412,7 +1446,7 @@ input:focus-visible {
     display: block;
   }
   .compass-ribbon {
-    top: 64px;
+    top: calc(var(--header-total) + 6px);
     width: 74vw;
   }
   .instrument-tape {
@@ -1421,7 +1455,7 @@ input:focus-visible {
   .mobile-hud {
     position: absolute;
     z-index: 4;
-    top: 119px;
+    top: calc(var(--header-total) + 61px);
     left: 8px;
     right: 8px;
     display: grid;
@@ -1460,7 +1494,7 @@ input:focus-visible {
   .camera-dock {
     left: 8px;
     right: 8px;
-    bottom: calc(var(--console-height) + 8px);
+    bottom: calc(var(--console-total) + 8px);
     transform: none;
   }
   .camera-dock button {
@@ -1469,7 +1503,7 @@ input:focus-visible {
     padding: 0;
   }
   .track-style-control {
-    top: 64px;
+    top: calc(var(--header-total) + 6px);
     right: 8px;
     bottom: auto;
     height: 38px;
@@ -1481,8 +1515,8 @@ input:focus-visible {
     max-width: 80px;
   }
   .advanced-rail {
-    top: 58px;
-    bottom: var(--console-height);
+    top: var(--header-total);
+    bottom: var(--console-total);
     width: 100%;
   }
   .chart-console {
@@ -1533,7 +1567,7 @@ input:focus-visible {
     overflow-y: auto;
   }
   .cesium-viewer-bottom {
-    bottom: calc(var(--console-height) + 50px);
+    bottom: calc(var(--console-total) + 50px);
   }
 }
 

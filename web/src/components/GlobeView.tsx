@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { InterpolatedPoint } from "@/domain/interpolate";
 import type { FlightData, FlightPoint } from "@/domain/types";
 
@@ -208,11 +208,13 @@ export function GlobeView({
   const trackRef = useRef<import("cesium").PolylineCollection | null>(null);
   const trackMetricRef = useRef(trackMetric);
   const latestGroundSample = useRef(0);
+  const [sceneError, setSceneError] = useState<string | null>(null);
   trackMetricRef.current = trackMetric;
 
   useEffect(() => {
     let cancelled = false;
     let viewer: import("cesium").Viewer | null = null;
+    setSceneError(null);
 
     const initialise = async () => {
       const C = await import("cesium");
@@ -283,7 +285,14 @@ export function GlobeView({
       configureMap(C, viewer, onMapStatus).catch(() => onMapStatus("fallback"));
     };
 
-    initialise().catch(() => onMapStatus("fallback"));
+    initialise().catch((error) => {
+      onMapStatus("fallback");
+      setSceneError(
+        error instanceof Error
+          ? error.message
+          : "La scène 3D n’est pas disponible dans ce navigateur.",
+      );
+    });
     return () => {
       cancelled = true;
       viewerRef.current = null;
@@ -371,11 +380,20 @@ export function GlobeView({
   }, [cameraMode, flight]);
 
   return (
-    <div
-      className="globe-view"
-      ref={containerRef}
-      role="img"
-      aria-label="Vue tridimensionnelle du vol"
-    />
+    <>
+      <div
+        className="globe-view"
+        ref={containerRef}
+        role="img"
+        aria-label="Vue tridimensionnelle du vol"
+      />
+      {sceneError && (
+        <div className="globe-error" role="alert">
+          <strong>Scène 3D indisponible</strong>
+          <span>{sceneError}</span>
+          <small>La trace et les instruments restent consultables.</small>
+        </div>
+      )}
+    </>
   );
 }
