@@ -1,4 +1,4 @@
-import { interpolateLongitude, shortestAngle } from "./geo";
+import { interpolateLongitude, normalizeHeading, shortestAngle } from "./geo";
 import type { FlightPoint } from "./types";
 
 export type InterpolatedPoint = FlightPoint & { fraction: number };
@@ -35,8 +35,8 @@ export function pointAtTime(
   const fraction = (time - from.time) / (to.time - from.time);
   const interpolate = (a: number | null, b: number | null) =>
     a === null || b === null ? (a ?? b) : a + (b - a) * fraction;
-  const courseFrom = from.sourceCourse ?? from.calculatedCourse;
-  const courseTo = to.sourceCourse ?? to.calculatedCourse;
+  const interpolateCourse = (a: number | null, b: number | null) =>
+    a === null || b === null ? (a ?? b) : normalizeHeading(a + shortestAngle(a, b) * fraction);
 
   return {
     ...from,
@@ -45,14 +45,12 @@ export function pointAtTime(
     elevation: interpolate(from.elevation, to.elevation),
     ellipsoidElevation: interpolate(from.ellipsoidElevation, to.ellipsoidElevation),
     sourceSpeed: interpolate(from.sourceSpeed, to.sourceSpeed),
+    sourceCourse: interpolateCourse(from.sourceCourse, to.sourceCourse),
     calculatedSpeed: interpolate(from.calculatedSpeed, to.calculatedSpeed),
     verticalSpeed: interpolate(from.verticalSpeed, to.verticalSpeed),
     turnRate: interpolate(from.turnRate, to.turnRate),
     distance: from.distance + (to.distance - from.distance) * fraction,
-    calculatedCourse:
-      courseFrom === null || courseTo === null
-        ? (courseFrom ?? courseTo)
-        : courseFrom + shortestAngle(courseFrom, courseTo) * fraction,
+    calculatedCourse: interpolateCourse(from.calculatedCourse, to.calculatedCourse),
     fraction,
   };
 }

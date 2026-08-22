@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from "dexie";
-import type { FlightRecord } from "@/domain/types";
+import type { FlightRecord, FlightSettingsPatch } from "@/domain/types";
 
 const database = new Dexie("gpx3d") as Dexie & {
   flights: EntityTable<FlightRecord, "id">;
@@ -27,8 +27,8 @@ export async function renameFlight(id: string, displayName: string) {
   await database.flights.update(id, { displayName: normalized });
 }
 
-export async function setFlightAltitudeOffset(id: string, altitudeOffset: number) {
-  await database.flights.update(id, { altitudeOffset });
+export async function updateFlightSettings(id: string, patch: FlightSettingsPatch) {
+  await database.flights.update(id, patch);
 }
 
 export async function deleteFlight(id: string) {

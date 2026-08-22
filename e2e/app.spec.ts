@@ -28,6 +28,12 @@ test("le lecteur avance et expose les vues caméra", async ({ page }) => {
 
   await page.getByTitle("Pilote").click();
   await expect(page.getByTitle("Pilote")).toHaveClass(/is-active/);
+  const pilotView = page.getByRole("region", { name: /Vue pilote orientable/ });
+  await pilotView.focus();
+  await pilotView.press("ArrowRight");
+  await pilotView.press("Home");
+  await expect(page.getByRole("button", { name: /Recentrer la vue pilote/ })).toBeVisible();
+  await page.getByRole("button", { name: /Recentrer la vue pilote/ }).click();
   await page.getByTitle("Trace").click();
   await expect(page.getByTitle("Trace")).toHaveClass(/is-active/);
 });
@@ -61,14 +67,37 @@ test("l’offset d’altitude est appliqué et persisté par vol", async ({ page
   await page.getByRole("button", { name: "Instruments avancés" }).click();
   const offset = page.getByRole("spinbutton", { name: "Offset d’altitude" });
   await offset.fill("25");
+  await page.getByRole("combobox", { name: "Modèle d’appareil" }).selectOption("paramotor");
   await expect(offset).toHaveValue("25");
   await expect(page.getByRole("button", { name: /valeur actuelle \+25 m/ })).toBeVisible();
   await expect(page.getByRole("button", { name: "Coller ce point au sol" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Retour à la bibliothèque" }).click();
+  await page.reload();
+  await expect(page.locator(".flight-open")).toBeVisible();
   await page.locator(".flight-open").click();
   await page.getByRole("button", { name: "Instruments avancés" }).click();
   await expect(page.getByRole("spinbutton", { name: "Offset d’altitude" })).toHaveValue("25");
+  await expect(page.getByRole("combobox", { name: "Modèle d’appareil" })).toHaveValue("paramotor");
+  await expect(page.getByRole("checkbox", { name: /Bâtiments OpenStreetMap/ })).toBeVisible();
+});
+
+test("les libellés des courbes ne se chevauchent pas", async ({ page }) => {
+  await page.goto("./");
+  await page.getByRole("button", { name: /Explorer la trace de démonstration/i }).click();
+  await expect(page.locator(".chart-label")).toHaveCount(3);
+
+  const rows = await page.locator(".chart-label").evaluateAll((labels) =>
+    labels.map((label) =>
+      Array.from(label.children).map((child) => {
+        const bounds = child.getBoundingClientRect();
+        return { top: bounds.top, bottom: bounds.bottom };
+      }),
+    ),
+  );
+  for (const [title, maximum, minimum] of rows) {
+    expect(title.bottom).toBeLessThanOrEqual(maximum.top + 0.5);
+    expect(maximum.bottom).toBeLessThanOrEqual(minimum.top + 0.5);
+  }
 });
 
 test("l’interface mobile conserve les commandes essentielles", async ({ page }, testInfo) => {

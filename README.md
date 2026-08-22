@@ -8,13 +8,16 @@ Elle est publiée sur [sharkoz.github.io/gpx3d](https://sharkoz.github.io/gpx3d/
 - Import GPX 1.0 et 1.1 dans un Web Worker.
 - Bibliothèque de vols locale avec renommage et suppression.
 - Terrain 3D et imagerie satellite sans clé, avec replis réseau.
-- Caméras trace entière, vue d'oiseau, poursuite, pilote et libre.
+- Caméras trace entière, vue d'oiseau, poursuite arrière, pilote orientable et libre.
 - Lecture temporelle de `0,25x` à `20x`, curseur et raccourcis clavier.
 - Altitude, vitesse source et calculée, cap, vario lissé, taux de virage et statistiques.
 - Courbes synchronisées et trajectoire colorée par altitude, vitesse, temps ou cap.
 - Interface française responsive pour ordinateur, tablette et téléphone.
 - Conversion locale EGM96 vers hauteur ellipsoïdale lorsque le producteur est identifié.
-- Offset vertical persistant et calage de la trajectoire sur le relief au point courant.
+- Proposition de calage du départ, offset vertical persistant et calage sur le relief au point courant.
+- Six appareils 3D low-poly orientés par la trajectoire : Cessna, pendulaire, paramoteur,
+  hélicoptère, A380 et Mirage.
+- Bâtiments OpenStreetMap extrudés à la demande autour de la position courante.
 
 ## Développement
 
@@ -50,7 +53,8 @@ la racine de `main`. Les fichiers source restent sous `web/` afin que Vite ne le
 
 Les fichiers GPX et les vols analysés restent dans IndexedDB sur l'appareil. Ils ne sont envoyés
 à aucun serveur. Les fournisseurs du relief et de l'imagerie reçoivent néanmoins les coordonnées
-des tuiles consultées.
+des tuiles consultées. Lorsque les bâtiments sont activés, l'API Overpass reçoit une zone d'environ
+900 m autour de la position choisie.
 
 Le terrain, l'altitude au-dessus du sol et l'attitude synthétique sont indicatifs. Ils ne doivent
 jamais servir à la navigation ou à la sécurité d'un vol.

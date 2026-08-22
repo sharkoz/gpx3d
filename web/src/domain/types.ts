@@ -63,12 +63,28 @@ export type FlightData = {
   warnings: string[];
 };
 
+export type AircraftModelId =
+  | "cessna"
+  | "ultralight"
+  | "paramotor"
+  | "helicopter"
+  | "a380"
+  | "mirage";
+
+export type DepartureAlignmentDecision = "aligned" | "kept";
+
 export type FlightRecord = {
   id: string;
   displayName: string;
   sourceFilename: string;
   importedAt: number;
   altitudeOffset?: number;
+  aircraftModelId?: AircraftModelId;
+  departureAlignmentDecision?: DepartureAlignmentDecision;
   originalGpx: string;
   data: FlightData;
 };
+
+export type FlightSettingsPatch = Partial<
+  Pick<FlightRecord, "altitudeOffset" | "aircraftModelId" | "departureAlignmentDecision">
+>;

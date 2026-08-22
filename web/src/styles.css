@@ -31,14 +31,16 @@ body {
   overflow-x: hidden;
 }
 button,
-input {
+input,
+select {
   font: inherit;
 }
 button {
   color: inherit;
 }
 button:focus-visible,
-input:focus-visible {
+input:focus-visible,
+select:focus-visible {
   outline: 2px solid var(--amber);
   outline-offset: 3px;
 }
@@ -611,6 +613,16 @@ input:focus-visible {
   width: 100%;
   height: 100%;
 }
+.globe-view.pilot-look-enabled canvas {
+  cursor: grab;
+}
+.globe-view.pilot-look-enabled canvas:active {
+  cursor: grabbing;
+}
+.globe-view:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: -4px;
+}
 .cesium-viewer-bottom {
   bottom: calc(var(--console-total) + 4px);
   left: 8px;
@@ -727,6 +739,60 @@ input:focus-visible {
 }
 .map-status.status-fallback span {
   background: var(--amber);
+}
+.departure-alignment-prompt {
+  position: absolute;
+  z-index: 8;
+  top: calc(var(--header-total) + 72px);
+  right: 18px;
+  width: min(390px, calc(100vw - 36px));
+  padding: 16px;
+  border: 1px solid rgba(255, 189, 89, 0.45);
+  background: linear-gradient(135deg, rgba(48, 32, 12, 0.96), rgba(5, 20, 25, 0.96));
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(14px);
+}
+.departure-alignment-prompt span,
+.departure-alignment-prompt strong {
+  display: block;
+}
+.departure-alignment-prompt span {
+  margin-bottom: 5px;
+  color: var(--amber);
+  font-size: 0.55rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.departure-alignment-prompt strong {
+  color: var(--ink);
+  font-size: 0.79rem;
+  line-height: 1.35;
+}
+.departure-alignment-prompt p {
+  margin: 7px 0 13px;
+  color: #8fa3a5;
+  font-size: 0.62rem;
+  line-height: 1.45;
+}
+.departure-alignment-actions {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 8px;
+}
+.departure-alignment-actions button {
+  min-height: 38px;
+  padding: 7px 10px;
+  border: 1px solid rgba(141, 199, 194, 0.22);
+  background: rgba(2, 13, 18, 0.7);
+  color: #aebfbe;
+  font-size: 0.58rem;
+  cursor: pointer;
+}
+.departure-alignment-actions button:first-child {
+  border-color: var(--amber);
+  background: var(--amber);
+  color: #241704;
+  font-weight: 750;
 }
 
 .compass-ribbon {
@@ -929,6 +995,34 @@ input:focus-visible {
   color: #05201e;
   background: var(--cyan);
 }
+.pilot-look-control {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: calc(var(--console-total) + 64px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px 7px 12px;
+  border: 1px solid rgba(99, 243, 220, 0.25);
+  background: rgba(3, 14, 19, 0.9);
+  color: #819699;
+  font-size: 0.55rem;
+  transform: translateX(-50%);
+  backdrop-filter: blur(10px);
+}
+.pilot-look-control button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 9px;
+  border: 1px solid rgba(99, 243, 220, 0.25);
+  background: rgba(99, 243, 220, 0.08);
+  color: var(--cyan);
+  font-size: 0.54rem;
+  cursor: pointer;
+}
 .track-style-control {
   position: absolute;
   z-index: 4;
@@ -1008,6 +1102,80 @@ input:focus-visible {
   border: 0;
   background: transparent;
   cursor: pointer;
+}
+.scene-settings {
+  margin: 14px 18px 6px;
+  padding: 14px;
+  border: 1px solid rgba(99, 243, 220, 0.2);
+  background: linear-gradient(135deg, rgba(9, 42, 45, 0.42), rgba(7, 22, 28, 0.58));
+}
+.scene-settings-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 13px;
+  color: var(--cyan);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.aircraft-model-control {
+  display: grid;
+  gap: 6px;
+}
+.aircraft-model-control span,
+.buildings-settings span {
+  color: #9aacad;
+  font-size: 0.6rem;
+}
+.aircraft-model-control select {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 9px;
+  border: 1px solid rgba(99, 243, 220, 0.28);
+  background: #07171d;
+  color: var(--ink);
+  font-size: 0.64rem;
+}
+.buildings-settings {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  margin-top: 13px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(141, 199, 194, 0.12);
+}
+.buildings-settings > label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.buildings-settings input {
+  accent-color: var(--cyan);
+}
+.buildings-settings button {
+  min-height: 32px;
+  padding: 0 8px;
+  border: 1px solid rgba(141, 199, 194, 0.2);
+  background: rgba(3, 14, 19, 0.65);
+  color: #9eb0b0;
+  font-size: 0.52rem;
+  cursor: pointer;
+}
+.buildings-settings button:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+.buildings-settings small,
+.buildings-settings a {
+  grid-column: 1 / -1;
+  color: #71878a;
+  font-size: 0.5rem;
+  line-height: 1.4;
+}
+.buildings-settings a {
+  color: #789e9d;
 }
 .altitude-adjustment {
   margin: 14px 18px 6px;
@@ -1239,7 +1407,7 @@ input:focus-visible {
   top: 0;
   bottom: 0;
   display: grid;
-  grid-template-rows: 1fr auto;
+  grid-template-rows: auto 1fr auto;
   width: 108px;
   padding: 9px 11px;
   border-right: 1px solid rgba(141, 199, 194, 0.14);
@@ -1256,9 +1424,7 @@ input:focus-visible {
   font-size: 0.48rem;
 }
 .chart-label span:last-child {
-  position: absolute;
-  left: 11px;
-  bottom: 7px;
+  position: static;
 }
 .chart-cursor-region {
   position: absolute;
@@ -1550,6 +1716,13 @@ input:focus-visible {
   .map-status span {
     display: block;
   }
+  .departure-alignment-prompt {
+    top: calc(var(--header-total) + 122px);
+    right: 8px;
+    left: 8px;
+    width: auto;
+    padding: 13px;
+  }
   .compass-ribbon {
     top: calc(var(--header-total) + 6px);
     width: 74vw;
@@ -1607,6 +1780,12 @@ input:focus-visible {
     justify-content: center;
     padding: 0;
   }
+  .pilot-look-control {
+    bottom: calc(var(--console-total) + 58px);
+  }
+  .pilot-look-control > span {
+    display: none;
+  }
   .track-style-control {
     top: calc(var(--header-total) + 6px);
     right: 8px;
@@ -1637,10 +1816,6 @@ input:focus-visible {
   }
   .chart-label span {
     font-size: 0.4rem;
-  }
-  .chart-label span:last-child {
-    left: 6px;
-    bottom: 5px;
   }
   .chart-cursor-region {
     left: 65px;

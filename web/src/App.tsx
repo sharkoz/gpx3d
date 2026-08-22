@@ -1,16 +1,29 @@
 import { useEffect, useState } from "react";
 import { FlightViewer } from "@/components/FlightViewer";
 import { Landing } from "@/components/Landing";
-import type { FlightRecord } from "@/domain/types";
+import type { FlightRecord, FlightSettingsPatch } from "@/domain/types";
 import { importFlightFile, loadDemoFlight } from "@/import/importFlight";
 import {
   deleteFlight,
+  getFlight,
   listFlights,
   renameFlight,
   requestPersistentStorage,
   saveFlight,
-  setFlightAltitudeOffset,
+  updateFlightSettings,
 } from "@/storage/database";
+
+async function preserveFlightSettings(record: FlightRecord) {
+  const existing = await getFlight(record.id);
+  if (!existing) return record;
+  return {
+    ...record,
+    displayName: existing.displayName,
+    altitudeOffset: existing.altitudeOffset ?? 0,
+    aircraftModelId: existing.aircraftModelId,
+    departureAlignmentDecision: existing.departureAlignmentDecision,
+  };
+}
 
 async function loadLibrary() {
   const stored = await listFlights();
@@ -29,6 +42,8 @@ async function loadLibrary() {
         displayName: record.displayName,
         importedAt: record.importedAt,
         altitudeOffset: record.altitudeOffset ?? 0,
+        aircraftModelId: record.aircraftModelId,
+        departureAlignmentDecision: record.departureAlignmentDecision,
       };
       await saveFlight(preserved);
       migrated.push(preserved);
@@ -54,10 +69,11 @@ export default function App() {
   }, []);
 
   const storeAndOpen = async (record: FlightRecord) => {
-    await saveFlight(record);
+    const preserved = await preserveFlightSettings(record);
+    await saveFlight(preserved);
     await requestPersistentStorage();
     await refreshFlights();
-    setActiveFlight(record);
+    setActiveFlight(preserved);
   };
 
   const handleImport = async (files: FileList | File[]) => {
@@ -66,7 +82,7 @@ export default function App() {
     try {
       let latest: FlightRecord | null = null;
       for (const file of Array.from(files)) {
-        latest = await importFlightFile(file);
+        latest = await preserveFlightSettings(await importFlightFile(file));
         await saveFlight(latest);
       }
       await requestPersistentStorage();
@@ -98,15 +114,15 @@ export default function App() {
       <FlightViewer
         record={activeFlight}
         onBack={() => setActiveFlight(null)}
-        onAltitudeOffsetChange={(altitudeOffset) => {
-          setActiveFlight((current) => (current ? { ...current, altitudeOffset } : current));
+        onSettingsChange={(patch: FlightSettingsPatch) => {
+          setActiveFlight((current) => (current ? { ...current, ...patch } : current));
           setFlights((current) =>
             current.map((flight) =>
-              flight.id === activeFlight.id ? { ...flight, altitudeOffset } : flight,
+              flight.id === activeFlight.id ? { ...flight, ...patch } : flight,
             ),
           );
-          setFlightAltitudeOffset(activeFlight.id, altitudeOffset).catch(() =>
-            setError("L’offset d’altitude n’a pas pu être enregistré."),
+          updateFlightSettings(activeFlight.id, patch).catch(() =>
+            setError("Les réglages du vol n’ont pas pu être enregistrés."),
           );
         }}
       />

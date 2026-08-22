@@ -39,4 +39,16 @@ describe("pointAtTime", () => {
     expect(result?.latitude).toBe(0);
     expect(result?.fraction).toBe(0);
   });
+
+  it("interpole et normalise les caps source et calculé séparément", () => {
+    const result = pointAtTime(
+      [
+        point({ time: 0, sourceCourse: 359, calculatedCourse: 90 }),
+        point({ index: 1, time: 1_000, sourceCourse: 1, calculatedCourse: 110 }),
+      ],
+      500,
+    );
+    expect(result?.sourceCourse).toBe(0);
+    expect(result?.calculatedCourse).toBe(100);
+  });
 });

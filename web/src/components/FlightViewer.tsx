@@ -2,6 +2,7 @@ import {
   ArrowLeft,
   BarChart3,
   Bird,
+  Building2,
   Eye,
   HelpCircle,
   Info,
@@ -10,6 +11,7 @@ import {
   Pause,
   Plane,
   Play,
+  RotateCcw,
   Route,
   SkipBack,
   SkipForward,
@@ -19,14 +21,27 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatDuration, formatLocalDate, formatMetric } from "@/domain/format";
 import { createTimeline, pointAtTime } from "@/domain/interpolate";
-import type { FlightRecord } from "@/domain/types";
+import type {
+  AircraftModelId,
+  DepartureAlignmentDecision,
+  FlightRecord,
+  FlightSettingsPatch,
+} from "@/domain/types";
+import { aircraftModelOptions } from "./aircraftModels";
 import { FlightCharts } from "./FlightCharts";
-import { type CameraMode, GlobeView, type MapStatus, type TrackMetric } from "./GlobeView";
+import {
+  type BuildingAnchor,
+  type BuildingsStatus,
+  type CameraMode,
+  GlobeView,
+  type MapStatus,
+  type TrackMetric,
+} from "./GlobeView";
 
 type FlightViewerProps = {
   record: FlightRecord;
   onBack: () => void;
-  onAltitudeOffsetChange: (altitudeOffset: number) => void;
+  onSettingsChange: (patch: FlightSettingsPatch) => void;
 };
 
 const rates = [0.25, 0.5, 1, 2, 4, 10, 20];
@@ -59,9 +74,10 @@ function MetricReadout({
   );
 }
 
-export function FlightViewer({ record, onBack, onAltitudeOffsetChange }: FlightViewerProps) {
+export function FlightViewer({ record, onBack, onSettingsChange }: FlightViewerProps) {
   const { data: flight } = record;
   const altitudeOffset = record.altitudeOffset ?? 0;
+  const aircraftModelId = record.aircraftModelId ?? "cessna";
   const start = flight.summary.startTime ?? 0;
   const end = flight.summary.endTime ?? start;
   const [currentTime, setCurrentTime] = useState(start);
@@ -74,12 +90,26 @@ export function FlightViewer({ record, onBack, onAltitudeOffsetChange }: FlightV
   const [showHelp, setShowHelp] = useState(false);
   const [mapStatus, setMapStatus] = useState<MapStatus>("loading");
   const [groundElevation, setGroundElevation] = useState<number | null>(null);
+  const [departureGroundElevation, setDepartureGroundElevation] = useState<number | null>(null);
+  const [pilotLookResetKey, setPilotLookResetKey] = useState(0);
+  const [buildingsEnabled, setBuildingsEnabled] = useState(false);
+  const [buildingsAnchor, setBuildingsAnchor] = useState<BuildingAnchor>({
+    latitude: flight.points[0].latitude,
+    longitude: flight.points[0].longitude,
+  });
+  const [buildingsInfo, setBuildingsInfo] = useState<{
+    status: BuildingsStatus;
+    count: number;
+  }>({ status: "idle", count: 0 });
   const previousFrame = useRef<number | null>(null);
   const timeline = useMemo(() => createTimeline(flight.points), [flight.points]);
   const currentPoint = useMemo(
     () => pointAtTime(flight.points, currentTime, timeline),
     [currentTime, flight.points, timeline],
   );
+  const handleBuildingsStatus = useCallback((status: BuildingsStatus, count: number) => {
+    setBuildingsInfo({ status, count });
+  }, []);
 
   const seek = useCallback(
     (time: number) => {
@@ -149,17 +179,53 @@ export function FlightViewer({ record, onBack, onAltitudeOffsetChange }: FlightV
     renderedElevation !== null && groundElevation !== null
       ? renderedElevation + altitudeOffset - groundElevation
       : null;
-  const setAltitudeOffset = (value: number) => {
+  const setAltitudeOffset = (value: number, decision?: DepartureAlignmentDecision) => {
     if (!Number.isFinite(value)) return;
-    onAltitudeOffsetChange(
-      Math.max(-MAX_ALTITUDE_OFFSET, Math.min(MAX_ALTITUDE_OFFSET, Math.round(value * 10) / 10)),
+    const normalized = Math.max(
+      -MAX_ALTITUDE_OFFSET,
+      Math.min(MAX_ALTITUDE_OFFSET, Math.round(value * 10) / 10),
     );
+    onSettingsChange({
+      altitudeOffset: normalized,
+      ...(decision ? { departureAlignmentDecision: decision } : {}),
+    });
   };
   const snapOffset =
     renderedElevation === null || groundElevation === null
       ? null
       : groundElevation - renderedElevation;
+  const departurePoint = flight.points[0];
+  const departureRenderedElevation =
+    departurePoint.ellipsoidElevation ?? departurePoint.elevation ?? null;
+  const departureSnapOffset =
+    departureRenderedElevation === null || departureGroundElevation === null
+      ? null
+      : departureGroundElevation - departureRenderedElevation;
+  const departureAgl =
+    departureRenderedElevation === null || departureGroundElevation === null
+      ? null
+      : departureRenderedElevation + altitudeOffset - departureGroundElevation;
+  const showDepartureAlignment =
+    record.departureAlignmentDecision === undefined &&
+    Math.abs(altitudeOffset) < 0.05 &&
+    departureSnapOffset !== null &&
+    Math.abs(departureSnapOffset) <= MAX_ALTITUDE_OFFSET &&
+    Math.abs(departureSnapOffset) >= 1;
   const signedOffset = `${altitudeOffset >= 0 ? "+" : ""}${altitudeOffset.toLocaleString("fr-FR", { maximumFractionDigits: 1 })} m`;
+  const refreshBuildings = () => {
+    const anchor = currentPoint ?? flight.points[0];
+    setBuildingsAnchor({ latitude: anchor.latitude, longitude: anchor.longitude });
+  };
+  const buildingsStatus =
+    buildingsInfo.status === "loading"
+      ? "Chargement autour de l’appareil…"
+      : buildingsInfo.status === "ready"
+        ? `${buildingsInfo.count.toLocaleString("fr-FR")} bâtiments affichés`
+        : buildingsInfo.status === "empty"
+          ? "Aucun bâtiment OSM trouvé dans cette zone."
+          : buildingsInfo.status === "error"
+            ? "Le service OpenStreetMap est temporairement indisponible."
+            : "Affichage désactivé";
 
   return (
     <main className={`flight-viewer charts-${showCharts ? "open" : "closed"}`}>
@@ -169,8 +235,14 @@ export function FlightViewer({ record, onBack, onAltitudeOffsetChange }: FlightV
         cameraMode={cameraMode}
         trackMetric={trackMetric}
         altitudeOffset={altitudeOffset}
+        aircraftModelId={aircraftModelId}
+        pilotLookResetKey={pilotLookResetKey}
+        buildingsEnabled={buildingsEnabled}
+        buildingsAnchor={buildingsAnchor}
         onMapStatus={setMapStatus}
         onGroundElevation={setGroundElevation}
+        onDepartureGroundElevation={setDepartureGroundElevation}
+        onBuildingsStatus={handleBuildingsStatus}
       />
       <div className="map-vignette" aria-hidden="true" />
 
@@ -215,6 +287,38 @@ export function FlightViewer({ record, onBack, onAltitudeOffsetChange }: FlightV
           <HelpCircle size={18} />
         </button>
       </header>
+
+      {showDepartureAlignment && departureSnapOffset !== null && (
+        <aside
+          className="departure-alignment-prompt"
+          role="dialog"
+          aria-modal="false"
+          aria-live="polite"
+          aria-labelledby="departure-alignment-title"
+          aria-describedby="departure-alignment-description"
+        >
+          <div>
+            <span>Calage du départ</span>
+            <strong id="departure-alignment-title">
+              Le point de départ est à {formatMetric(departureAgl, "m", 1)} du relief
+            </strong>
+            <p id="departure-alignment-description">
+              Appliquer un décalage de {formatMetric(departureSnapOffset, "m", 1)} au rendu 3D ?
+            </p>
+          </div>
+          <div className="departure-alignment-actions">
+            <button type="button" onClick={() => setAltitudeOffset(departureSnapOffset, "aligned")}>
+              Aligner le départ
+            </button>
+            <button
+              type="button"
+              onClick={() => onSettingsChange({ departureAlignmentDecision: "kept" })}
+            >
+              Conserver tel quel
+            </button>
+          </div>
+        </aside>
+      )}
 
       <div
         className="compass-ribbon"
@@ -290,6 +394,20 @@ export function FlightViewer({ record, onBack, onAltitudeOffsetChange }: FlightV
         ))}
       </fieldset>
 
+      {cameraMode === "pilot" && (
+        <div className="pilot-look-control">
+          <span>Glisser ou utiliser les flèches</span>
+          <button
+            type="button"
+            onClick={() => setPilotLookResetKey((value) => value + 1)}
+            aria-label="Recentrer la vue pilote vers l’avant"
+          >
+            <RotateCcw size={14} />
+            Droit devant
+          </button>
+        </div>
+      )}
+
       <div className="track-style-control">
         <Route size={14} />
         <label htmlFor="track-metric">Couleur</label>
@@ -346,6 +464,55 @@ export function FlightViewer({ record, onBack, onAltitudeOffsetChange }: FlightV
               <X size={17} />
             </button>
           </div>
+          <section className="scene-settings" aria-labelledby="scene-settings-title">
+            <div className="scene-settings-heading">
+              <Building2 size={16} />
+              <span id="scene-settings-title">Appareil et décor 3D</span>
+            </div>
+            <label className="aircraft-model-control">
+              <span>Modèle d’appareil</span>
+              <select
+                aria-label="Modèle d’appareil"
+                value={aircraftModelId}
+                onChange={(event) =>
+                  onSettingsChange({ aircraftModelId: event.target.value as AircraftModelId })
+                }
+              >
+                {aircraftModelOptions.map(({ id, label }) => (
+                  <option key={id} value={id}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="buildings-settings">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={buildingsEnabled}
+                  onChange={(event) => {
+                    const enabled = event.target.checked;
+                    if (enabled) refreshBuildings();
+                    setBuildingsEnabled(enabled);
+                  }}
+                />
+                <span>Bâtiments OpenStreetMap en 3D</span>
+              </label>
+              <button
+                type="button"
+                onClick={refreshBuildings}
+                disabled={!buildingsEnabled || buildingsInfo.status === "loading"}
+              >
+                Actualiser ici
+              </button>
+              <small role="status" aria-live="polite">
+                {buildingsStatus}
+              </small>
+              <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
+                © contributeurs OpenStreetMap
+              </a>
+            </div>
+          </section>
           <section className="altitude-adjustment" aria-labelledby="altitude-adjustment-title">
             <div className="altitude-adjustment-heading">
               <div>
@@ -362,7 +529,7 @@ export function FlightViewer({ record, onBack, onAltitudeOffsetChange }: FlightV
                 max={MAX_ALTITUDE_OFFSET}
                 step="0.5"
                 value={altitudeOffset}
-                onChange={(event) => setAltitudeOffset(Number(event.target.value))}
+                onChange={(event) => setAltitudeOffset(Number(event.target.value), "kept")}
               />
               <em>m</em>
             </label>
@@ -377,7 +544,7 @@ export function FlightViewer({ record, onBack, onAltitudeOffsetChange }: FlightV
               <button
                 className="snap-ground-action"
                 type="button"
-                onClick={() => snapOffset !== null && setAltitudeOffset(snapOffset)}
+                onClick={() => snapOffset !== null && setAltitudeOffset(snapOffset, "aligned")}
                 disabled={snapOffset === null}
               >
                 Coller ce point au sol

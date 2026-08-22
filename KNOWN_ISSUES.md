@@ -19,6 +19,8 @@
   indicative malgré la conversion de référence verticale.
 - L'offset manuel et l'action de calage déplacent uniquement le rendu 3D. Les altitudes GPX, le vario
   et les statistiques restent volontairement inchangés.
+- Les modèles d'appareil sont des silhouettes low-poly indicatives. Leur roulis et leur tangage sont
+  déduits de la trajectoire, sans données d'attitude enregistrées.
 - Une trace sans timestamps reste explorable en 3D, mais ne peut pas être rejouée. Une trace sans
   altitude conserve sa géométrie, sans vario ni analyse verticale.
 
@@ -26,6 +28,10 @@
 
 - ArcGIS, OpenStreetMap et l'éventuel compte MapTiler n'offrent aucun SLA à cette application. En cas
   d'échec, le globe se replie sur une texture locale et un ellipsoïde sans relief.
+- Les bâtiments 3D sont limités aux 40 premiers objets OpenStreetMap dans une petite zone autour de
+  l'appareil. Leur altitude de base est échantillonnée au centre de la zone et peut donc être
+  approximative sur un terrain très pentu. Les relations multipolygones complexes ne sont pas encore
+  affichées. L'option reste désactivée par défaut.
 - IndexedDB peut être effacé par l'utilisateur, le navigateur ou le système. Aucun compte ni sauvegarde
   distante n'est fourni dans cette version.
 - La taille d'import est limitée à 50 Mo. Les analyses restent en pleine résolution, tandis que la

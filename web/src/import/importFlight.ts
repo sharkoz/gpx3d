@@ -43,6 +43,7 @@ export async function importFlightFile(file: File): Promise<FlightRecord> {
     sourceFilename: file.name,
     importedAt: Date.now(),
     altitudeOffset: 0,
+    aircraftModelId: "cessna",
     originalGpx,
     data,
   };
